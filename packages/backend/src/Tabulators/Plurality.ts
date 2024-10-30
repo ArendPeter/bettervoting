@@ -3,9 +3,9 @@ import { approvalResults, approvalSummaryData, ballot, candidate, pluralityResul
 import { IparsedData } from './ParseData'
 const ParseData = require("./ParseData");
 
-export function Plurality(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder:number[] = [], breakTiesRandomly = true) {
+export function Plurality(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder:number[] = [], breakTiesRandomly = true, weights = []) {
   const parsedData = ParseData(votes, getPluralityBallotValidity)
-  const summaryData = getSummaryData(candidates, parsedData, randomTiebreakOrder)
+  const summaryData = getSummaryData(candidates, parsedData, randomTiebreakOrder, weights)
   const results: pluralityResults = {
     votingMethod: 'Plurality',
     elected: [],
@@ -48,7 +48,7 @@ export function Plurality(candidates: string[], votes: ballot[], nWinners = 1, r
   return results;
 }
 
-function getSummaryData(candidates: string[], parsedData: IparsedData, randomTiebreakOrder: number[]): pluralitySummaryData{
+function getSummaryData(candidates: string[], parsedData: IparsedData, randomTiebreakOrder: number[], weights: number[]): pluralitySummaryData{
   // Initialize summary data structures
   const nCandidates = candidates.length
   if (randomTiebreakOrder.length < nCandidates) {
@@ -59,11 +59,14 @@ function getSummaryData(candidates: string[], parsedData: IparsedData, randomTie
     totalScores[i] = { index: i, score: 0 };
   }
   // Iterate through ballots, 
-  parsedData.scores.forEach((vote) => {
+  parsedData.scores.forEach((vote, j) => {
     for (let i = 0; i < nCandidates; i++) {
-      totalScores[i].score += vote[i]
+      totalScores[i].score += vote[i]*weights[j];
     }
   })
+
+  totalScores.forEach(t => t.score = Math.round(t.score))
+
   const candidatesWithIndexes = candidates.map((candidate, index) => ({ index: index, name: candidate, tieBreakOrder: randomTiebreakOrder[index] }))
   return {
     candidates: candidatesWithIndexes,

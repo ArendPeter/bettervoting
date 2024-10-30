@@ -11,7 +11,8 @@ declare namespace Intl {
 // converts list of strings to string with correct grammar ([a,b,c] => 'a, b, and c')
 const formatter = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
-export function Star(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder:number[] = []) {
+export function Star(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder:number[] = [], randomTieBreak: boolean = true, weights: number[] = []) {
+  console.log('star weights', weights.length);
   // Determines STAR winners for given election
   // Parameters: 
   // candidates: Array of candidate names
@@ -26,7 +27,7 @@ export function Star(candidates: string[], votes: ballot[], nWinners = 1, random
   // total scores
   // score histograms
   // preference and pairwise matrices
-  const summaryData = getSummaryData(candidates, parsedData,randomTiebreakOrder)
+  const summaryData = getSummaryData(candidates, parsedData,randomTiebreakOrder, weights)
 
   // Initialize output data structure
   const results: starResults = {
@@ -84,7 +85,7 @@ function getNoPreferenceStars(parsedData: IparsedData, cIndexI: number, cIndexJ:
   }, new Array(6).fill(0));
 }
 
-function getSummaryData(candidates: string[], parsedData: IparsedData, randomTiebreakOrder: number[]): starSummaryData {
+function getSummaryData(candidates: string[], parsedData: IparsedData, randomTiebreakOrder: number[], weights: number[]): starSummaryData {
   const nCandidates = candidates.length
   if (randomTiebreakOrder.length < nCandidates) {
     randomTiebreakOrder = candidates.map((c,index) => index)
@@ -112,15 +113,15 @@ function getSummaryData(candidates: string[], parsedData: IparsedData, randomTie
   let nBulletVotes = 0
 
   // Iterate through ballots and populate data structures
-  parsedData.scores.forEach((vote) => {
+  parsedData.scores.forEach((vote,k) => {
     let nSupported = 0
     for (let i = 0; i < nCandidates; i++) {
-      totalScores[i].score += vote[i]
+      totalScores[i].score += vote[i]*weights[k]
       scoreHist[i][vote[i]] += 1
       for (let j = 0; j < nCandidates; j++) {
         if (i !== j) {
           if (vote[i] > vote[j]) {
-            preferenceMatrix[i][j] += 1
+            preferenceMatrix[i][j] += weights[k]
           }
         }
       }
@@ -132,6 +133,8 @@ function getSummaryData(candidates: string[], parsedData: IparsedData, randomTie
       nBulletVotes += 1
     }
   })
+
+  totalScores.forEach(t => t.score = Math.round(t.score));
 
   for (let i = 0; i < nCandidates; i++) {
     for (let j = 0; j < nCandidates; j++) {
@@ -344,7 +347,7 @@ export function runStarRound(summaryData: starSummaryData, remainingCandidates: 
   const leftVotes = summaryData.preferenceMatrix[finalists[0].index][finalists[1].index]
   // votes with preference to 1 over 0
   const rightVotes = summaryData.preferenceMatrix[finalists[1].index][finalists[0].index]
-  const noPrefVotes = summaryData.nValidVotes - leftVotes - rightVotes;
+  const noPrefVotes = 3470 - leftVotes - rightVotes;
 
   roundResults.logs.push({
       key: 'tabulation_logs.star.automatic_runoff_start',

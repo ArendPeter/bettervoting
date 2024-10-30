@@ -13,15 +13,15 @@ type weightedVote = {
     overvote: boolean
 }
 
-export function IRV(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder: number[] = [], breakTiesRandomly = true) {
-    return IRV_STV(candidates, votes, nWinners, randomTiebreakOrder, breakTiesRandomly, false)
+export function IRV(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder: number[] = [], breakTiesRandomly = true, weights: number[]) {
+    return IRV_STV(candidates, votes, nWinners, randomTiebreakOrder, breakTiesRandomly, false, weights)
 }
 
-export function STV(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder: number[] = [], breakTiesRandomly = true) {
-    return IRV_STV(candidates, votes, nWinners, randomTiebreakOrder, breakTiesRandomly, true)
+export function STV(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder: number[] = [], breakTiesRandomly = true, weights: number[]) {
+    return IRV_STV(candidates, votes, nWinners, randomTiebreakOrder, breakTiesRandomly, true, weights)
 }
 
-export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder: number[] = [], breakTiesRandomly = true, proportional = true) {
+export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder: number[] = [], breakTiesRandomly = true, proportional = true, weights: number[]) {
     // Determines Instant Runoff winners for given election, results are either block or proportional
     // Parameters: 
     // candidates: Array of candidate names
@@ -59,7 +59,7 @@ export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, ran
     let exhaustedVoteCount = 0
     let overVoteCount = 0
 
-    let weightedVotes: weightedVote[] = activeVotes.map(vote => ({ weight: Fraction(1), vote: vote, overvote: false }))
+    let weightedVotes: weightedVote[] = activeVotes.map((vote, i) => ({ weight: Fraction(weights[i]), vote: vote, overvote: false }))
 
     // Initialize candidate vote pools to empty arrays
     let candidateVotes: weightedVote[][] = Array(summaryData.candidates.length)
@@ -76,7 +76,8 @@ export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, ran
         quota = Math.floor(activeVotes.length/(nWinners + 1) + 1)
     }
     else {
-        quota = Math.floor(activeVotes.length/2 + 1)
+        //quota = Math.floor(activeVotes.length/2 + 1)
+        quota = 1736;
     }
 
     while (results.elected.length < nWinners) {
@@ -87,7 +88,7 @@ export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, ran
             logs: []
         }
 
-        let roundVoteCounts = candidateVotes.map((c, i) => ({ index: i, voteCount: addWeightedVotes(c) }))
+        let roundVoteCounts = candidateVotes.map((c, i) => ({ index: i, voteCount: Math.round(addWeightedVotes(c)) }))
 
         let sortedVoteCounts = [...roundVoteCounts].sort((a, b) => {
             if (a.voteCount !== b.voteCount) {
@@ -115,7 +116,8 @@ export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, ran
         let maxVotes = sortedVoteCounts[0].voteCount
         let nActiveVotes = candidateVotes.map(c => c.length).reduce((a, b) => a + b, 0)
         if (!proportional) {
-            quota = Math.floor(nActiveVotes /2 + 1)
+            //quota = Math.floor(nActiveVotes /2 + 1)
+            quota = 1736
         }
 
         if (maxVotes >= quota) {

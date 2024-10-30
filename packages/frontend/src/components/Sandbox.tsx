@@ -15,7 +15,7 @@ const Sandbox = () => {
 
     const { data, error, isPending, makeRequest } = useGetSandboxResults()
 
-    const [candidates, setCandidates] = useState('A,B,C,D,E')
+    const [candidates, setCandidates] = useState('Donald J. Trump (R),Kamala Harris (D),Robert F. Kennedy Jr. (I),Jill Stein (G),Chase Oliver (L),Randall Terry (C),Claudia De la Cruz (S),Cornell West (I)')
     const [cvr, setCvr] = useState('')
     const [nWinners, setNWinners] = useState(1)
     const [votingMethod, setVotingMethod] = useState<VotingMethod>('STAR')

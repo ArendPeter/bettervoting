@@ -4,11 +4,11 @@ import { IparsedData } from './ParseData'
 import { commaListFormatter, sortTotalScores } from "./Util";
 const ParseData = require("./ParseData");
 
-export function Approval(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder:number[] = [], breakTiesRandomly = true) {
+export function Approval(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder:number[] = [], breakTiesRandomly = true, weights=[]) {
   breakTiesRandomly = true // hard coding this for now
 
   const parsedData = ParseData(votes, getApprovalBallotValidity)
-  const summaryData = getSummaryData(candidates, parsedData, randomTiebreakOrder)
+  const summaryData = getSummaryData(candidates, parsedData, randomTiebreakOrder, weights)
   const results: approvalResults = {
     votingMethod: 'Approval',
     elected: [],
@@ -65,7 +65,7 @@ const SingleWinnerApproval = (scoresLeft: totalScore[], candidates: candidate[])
   return roundResults;
 }
 
-function getSummaryData(candidates: string[], parsedData: IparsedData, randomTiebreakOrder:number[]): approvalSummaryData {
+function getSummaryData(candidates: string[], parsedData: IparsedData, randomTiebreakOrder:number[], weights: []): approvalSummaryData {
   // Initialize summary data structures
   const nCandidates = candidates.length
   if (randomTiebreakOrder.length < nCandidates) {
@@ -77,10 +77,10 @@ function getSummaryData(candidates: string[], parsedData: IparsedData, randomTie
   }
   let nBulletVotes = 0
   // Iterate through ballots, 
-  parsedData.scores.forEach((vote) => {
+  parsedData.scores.forEach((vote,j) => {
     let nSupported = 0
     for (let i = 0; i < nCandidates; i++) {
-      totalScores[i].score += vote[i]
+      totalScores[i].score += vote[i]*weights[j]
       if (vote[i] > 0) {
         nSupported += 1
       }

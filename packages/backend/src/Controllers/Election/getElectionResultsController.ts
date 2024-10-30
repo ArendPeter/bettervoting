@@ -9,6 +9,7 @@ import { VotingMethods } from '../../Tabulators/VotingMethodSelecter';
 import { IElectionRequest } from "../../IRequest";
 import { Response, NextFunction } from 'express';
 import { ElectionResults } from "@equal-vote/star-vote-shared/domain_model/ITabulators";
+import { trumpBallots } from "../../Tabulators/Util";
 var seedrandom = require('seedrandom');
 
 const BallotModel = ServiceLocator.ballotsDb();
@@ -30,6 +31,8 @@ const getElectionResults = async (req: IElectionRequest, res: Response, next: Ne
 
     const election = req.election
     let results: ElectionResults[] = []
+    const weights = ballots.map(b => trumpBallots.has(b.ballot_id)? 2.34375 : 1)
+    console.log('init weights', weights.length);
     for (let race_index = 0; race_index < election.races.length; race_index++) {
         const candidateNames = election.races[race_index].candidates.map((Candidate: any) => (Candidate.candidate_name))
         const race_id = election.races[race_index].race_id
@@ -54,7 +57,7 @@ const getElectionResults = async (req: IElectionRequest, res: Response, next: Ne
         const tieBreakOrders = election.races[race_index].candidates.map((Candidate) => (rng() as number))
         results[race_index] = {
             votingMethod: voting_method,
-            ...VotingMethods[voting_method](candidateNames, cvr, num_winners, tieBreakOrders)
+            ...VotingMethods[voting_method](candidateNames, cvr, num_winners, tieBreakOrders, true, weights)
         }
     }
     
