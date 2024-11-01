@@ -1,6 +1,7 @@
 import { ballot, candidate, fiveStarCount, starResults, roundResults, starSummaryData, totalScore } from "@equal-vote/star-vote-shared/domain_model/ITabulators";
 
 import { IparsedData } from './ParseData'
+import { getTotalBallots, numBallots } from "@equal-vote/star-vote-shared/domain_model/weighting";
 const ParseData = require("./ParseData");
 declare namespace Intl {
   class ListFormat {
@@ -43,7 +44,7 @@ export function Star(candidates: string[], votes: ballot[], nWinners = 1, random
   // Run election rounds until there are no remaining candidates
   // Keep running elections rounds even if all seats have been filled to determine candidate order
   while (remainingCandidates.length > 0) {
-    const roundResults = runStarRound(summaryData, remainingCandidates)
+    const roundResults = runStarRound(summaryData, remainingCandidates, getTotalBallots(weights))
     if ((results.elected.length + results.tied.length + roundResults.winners.length) <= nWinners) {
       // There are enough seats available to elect all winners of current round
       results.elected.push(...roundResults.winners)
@@ -187,7 +188,7 @@ function sortData(summaryData: starSummaryData, order: candidate[]): starSummary
   }
 }
 
-export function runStarRound(summaryData: starSummaryData, remainingCandidates: candidate[]): roundResults {
+export function runStarRound(summaryData: starSummaryData, remainingCandidates: candidate[], totalBallots: number): roundResults {
   // Initialize output results data structure
   const roundResults: roundResults = {
     winners: [],
@@ -347,7 +348,7 @@ export function runStarRound(summaryData: starSummaryData, remainingCandidates: 
   const leftVotes = summaryData.preferenceMatrix[finalists[0].index][finalists[1].index]
   // votes with preference to 1 over 0
   const rightVotes = summaryData.preferenceMatrix[finalists[1].index][finalists[0].index]
-  const noPrefVotes = 3470 - leftVotes - rightVotes;
+  const noPrefVotes = totalBallots - leftVotes - rightVotes;
 
   roundResults.logs.push({
       key: 'tabulation_logs.star.automatic_runoff_start',

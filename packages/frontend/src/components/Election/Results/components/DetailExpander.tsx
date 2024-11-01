@@ -45,7 +45,8 @@ export default ({ children, level = 0 }) => {
           <ExpandLess sx={{ "@media print": { display: "none" } }} />
         )}
       </Box>
-      {viewDetails && children}
+      {viewDetails && ballots && children}
+      {viewDetails && !ballots && 'loading'}
     </>
   );
 }

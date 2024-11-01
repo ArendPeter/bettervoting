@@ -1,6 +1,7 @@
 import { ballot, candidate, irvResults, irvRoundResults, irvSummaryData, totalScore } from "@equal-vote/star-vote-shared/domain_model/ITabulators";
 
 import { IparsedData } from './ParseData'
+import { getTotalBallots } from "@equal-vote/star-vote-shared/domain_model/weighting";
 // import Fraction from "fraction.js";
 const ParseData = require("./ParseData");
 
@@ -77,7 +78,7 @@ export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, ran
     }
     else {
         //quota = Math.floor(activeVotes.length/2 + 1)
-        quota = 1736;
+        quota = getTotalBallots(weights)/2 + 1
     }
 
     while (results.elected.length < nWinners) {
@@ -117,7 +118,7 @@ export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, ran
         let nActiveVotes = candidateVotes.map(c => c.length).reduce((a, b) => a + b, 0)
         if (!proportional) {
             //quota = Math.floor(nActiveVotes /2 + 1)
-            quota = 1736
+            quota = getTotalBallots(weights)/2 + 1
         }
 
         if (maxVotes >= quota) {

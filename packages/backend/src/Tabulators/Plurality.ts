@@ -44,6 +44,9 @@ export function Plurality(candidates: string[], votes: ballot[], nWinners = 1, r
     }
     remainingCandidates = remainingCandidates.filter(c => !scoreWinners.includes(c))
   }
+
+  if(sortedScores[0].score == sortedScores[1].score)
+    results.tieBreakType = 'random';
   
   return results;
 }
