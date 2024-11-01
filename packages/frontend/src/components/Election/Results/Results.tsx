@@ -361,7 +361,7 @@ export default function Results({ race, results }: {race: Race, results: Electio
           :
             <Typography variant="h5" sx={{fontWeight: 'bold'}}>{t('results.win_title', {names: commaListFormatter.format(results.elected.map(c => c.name))})}</Typography>
           }
-          <Typography variant="h6">{t('results.vote_count', {n: results.summaryData.nValidVotes})}</Typography>
+          {/*<Typography variant="h6">{t('results.vote_count', {n: results.summaryData.nValidVotes})}</Typography>*/}
         </>}
         </Box>
         {results.summaryData.nValidVotes > 1 &&

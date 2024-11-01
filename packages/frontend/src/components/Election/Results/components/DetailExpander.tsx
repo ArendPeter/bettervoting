@@ -31,7 +31,7 @@ export default ({ children, level = 0 }) => {
         onClick={() => {
           if (!viewDetails)
             scrollToElement(document.querySelector(`.${expanderId}`));
-          //fetchBallots();
+          fetchBallots();
           setViewDetails(!viewDetails);
         }}
       >
