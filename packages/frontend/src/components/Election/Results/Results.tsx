@@ -17,6 +17,8 @@ import WidgetContainer from "./components/WidgetContainer";
 import ResultsBarChart from "./components/ResultsBarChart";
 import HeadToHeadWidget from "./components/HeadToHeadWidget";
 import useRace, { RaceContextProvider } from "~/components/RaceContextProvider";
+import useAnonymizedBallots from "~/components/AnonymizedBallotsContextProvider";
+import { getBallotWeights, getTotalBallots } from "@equal-vote/star-vote-shared/domain_model/Weighting";
 
 function STARResultsViewer({ filterRandomFromLogs }: {filterRandomFromLogs: boolean }) {
   let i = 0;
@@ -231,7 +233,9 @@ function PluralityResultsViewer() {
 function ApprovalResultsViewer() {
   let {results, race, t} = useRace();
   results = results as approvalResults;
-
+  const {ballots} = useAnonymizedBallots();
+  const weights = getBallotWeights(ballots ?? [])
+  const totalBallots = getTotalBallots(weights)
   return <ResultsViewer methodKey='approval'>
     <WidgetContainer>
       <Widget title={t('results.approval.bar_title')}>
@@ -244,7 +248,7 @@ function ApprovalResultsViewer() {
           }
           star
           percentage
-          percentDenominator={results.summaryData.nValidVotes} 
+          percentDenominator={totalBallots}//results.summaryData.nValidVotes} 
         />
       </Widget>
     </WidgetContainer>
@@ -337,7 +341,6 @@ function PRResultsViewer() {
 
 export default function Results({ race, results }: {race: Race, results: ElectionResults}) {
   const { t, election, voterAuth, refreshElection, permissions, updateElection } = useElection();
-  console.log(results.tieBreakType)
   let showTitleAsTie = results.tieBreakType != 'none'; //['random', 'five_star'].includes(results.tieBreakType);
   // added a null check for sandbox support
   let removeTieBreakFromTitle = true; // (election?.settings.break_ties_randomly ?? false) && results.tieBreakType == 'random';

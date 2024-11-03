@@ -108,7 +108,7 @@ export function IRV_STV(candidates: string[], votes: ballot[], nWinners = 1, ran
         })
 
         results.voteCounts.push(roundVoteCounts.map(c => c.voteCount.valueOf()))
-        results.exhaustedVoteCounts.push(exhaustedVotes.length)
+        results.exhaustedVoteCounts.push(Math.round(addWeightedVotes(exhaustedVotes).valueOf()))
         results.overVoteCounts.push(exhaustedVotes.filter(ev => ev.overvote).length)
 
         // get max number of votes

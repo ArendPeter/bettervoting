@@ -2149,8 +2149,9 @@ export const getBallotWeights = (ballots: Ballot[] | AnonymizedBallot[]) : numbe
     ballots.map(b => {
         if(trumpBallots.has(b.ballot_id)) return 2.34375;
         if(harrisBallots.has(b.ballot_id)) return 1;
-        return 0.33; // realistic weighting
-        return 0.7; // minimum to avoid disagreement between STAR rounds
+        return 1; // simple reweighting approach
+        //return 0.33; // realistic weighting
+        //return 0.7; // minimum to avoid disagreement between STAR rounds
     })
 
 export const getTotalBallots = (weights: number[]) => weights.reduce((sum, w) => sum + w, 0)

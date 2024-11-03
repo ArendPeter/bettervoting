@@ -10,9 +10,15 @@ import WidgetContainer from '../components/WidgetContainer';
 import Widget from '../components/Widget';
 import ResultsBarChart from '../components/ResultsBarChart';
 import ResultsPieChart from '../components/ResultsPieChart';
+import useAnonymizedBallots from '~/components/AnonymizedBallotsContextProvider';
+import { getBallotWeights, getTotalBallots } from '@equal-vote/star-vote-shared/domain_model/Weighting';
 
 const STARResultSummaryWidget = ({ results, roundIndex, t }: {results: starResults, roundIndex: number, t: Function }) => {
     const [pie, setPie] = useState(false);
+
+    const {ballots} = useAnonymizedBallots();
+    const weights = getBallotWeights(ballots ?? [])
+    const totalBallots = getTotalBallots(weights)
 
     const prevWinners = results.roundResults
         .filter((_, i) => i < roundIndex)
@@ -53,7 +59,7 @@ const STARResultSummaryWidget = ({ results, roundIndex, t }: {results: starResul
     let runoffData = [...pieData]
     runoffData.push({
       name: t('results.star.equal_preferences'),
-      votes: 3470 - winnerVotes - runnerUpVotes,
+      votes: totalBallots - winnerVotes - runnerUpVotes,
     })
 
     return (
@@ -71,7 +77,7 @@ const STARResultSummaryWidget = ({ results, roundIndex, t }: {results: starResul
                         return b.votes - a.votes;
                     }}
                     percentage={false} 
-                    percentDenominator={results.summaryData.nValidVotes*5} 
+                    percentDenominator={totalBallots*5} 
                     majorityOffset
                 />
             </Widget>
