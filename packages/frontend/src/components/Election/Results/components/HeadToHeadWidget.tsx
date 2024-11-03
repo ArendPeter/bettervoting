@@ -19,6 +19,7 @@ interface IMatchup {
 export default ({candidates=[], ranked=false} : {candidates?: Candidate[], ranked?: boolean}) => {
     const {t} = useElection();
     const {ballots, ballotsForRace} = useAnonymizedBallots();
+    console.log('length', ballots.length);
     const {race} = useRace();
     if(candidates.length == 0) candidates = race.candidates;
     const [refCandidateId, setRefCandidateId] = useState(candidates[0].candidate_id);
@@ -37,7 +38,6 @@ export default ({candidates=[], ranked=false} : {candidates?: Candidate[], ranke
     });
 
     const defValue =  (ranked)? Infinity : 0;
-    console.log(ballots.length);
     const weights = getBallotWeights(ballots)
     b.forEach((scores, j) => {
         let refValue = scores.find((score) => score.candidate_id == refCandidateId)?.score ?? defValue;

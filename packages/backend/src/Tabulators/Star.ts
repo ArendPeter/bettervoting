@@ -1,7 +1,7 @@
 import { ballot, candidate, fiveStarCount, starResults, roundResults, starSummaryData, totalScore } from "@equal-vote/star-vote-shared/domain_model/ITabulators";
 
 import { IparsedData } from './ParseData'
-import { getTotalBallots, numBallots } from "@equal-vote/star-vote-shared/domain_model/weighting";
+import { getTotalBallots } from "@equal-vote/star-vote-shared/domain_model/weighting";
 const ParseData = require("./ParseData");
 declare namespace Intl {
   class ListFormat {
@@ -13,7 +13,6 @@ declare namespace Intl {
 const formatter = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
 export function Star(candidates: string[], votes: ballot[], nWinners = 1, randomTiebreakOrder:number[] = [], randomTieBreak: boolean = true, weights: number[] = []) {
-  console.log('star weights', weights.length);
   // Determines STAR winners for given election
   // Parameters: 
   // candidates: Array of candidate names
@@ -44,6 +43,7 @@ export function Star(candidates: string[], votes: ballot[], nWinners = 1, random
   // Run election rounds until there are no remaining candidates
   // Keep running elections rounds even if all seats have been filled to determine candidate order
   while (remainingCandidates.length > 0) {
+    console.log('length', weights.length, getTotalBallots(weights))
     const roundResults = runStarRound(summaryData, remainingCandidates, getTotalBallots(weights))
     if ((results.elected.length + results.tied.length + roundResults.winners.length) <= nWinners) {
       // There are enough seats available to elect all winners of current round
