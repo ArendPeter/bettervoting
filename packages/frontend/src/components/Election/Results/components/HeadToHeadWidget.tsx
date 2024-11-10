@@ -24,8 +24,11 @@ export default ({candidates=[], ranked=false} : {candidates?: Candidate[], ranke
     if(candidates.length == 0) candidates = race.candidates;
     const [refCandidateId, setRefCandidateId] = useState(candidates[0].candidate_id);
 
+<<<<<<< Updated upstream
     let b = ballotsForRace()
 
+=======
+>>>>>>> Stashed changes
     const refCandidateName = candidates.find(c => c.candidate_id == refCandidateId).candidate_name;
     const matchups: {[key: string]:IMatchup} = {};
     candidates.forEach((c, i) => {
@@ -101,5 +104,13 @@ export default ({candidates=[], ranked=false} : {candidates?: Candidate[], ranke
                 </Box>
             })}
         </Box>
+<<<<<<< Updated upstream
+=======
+        <ResultsKey items={[
+            [CHART_COLORS[0], `${refCandidateName}'s support`],
+            ['var(--brand-gray-1)', `Didn't rank either`],
+            [CHART_COLORS[1], `Other candidate's support`],
+        ]} />
+>>>>>>> Stashed changes
     </Widget>
 }

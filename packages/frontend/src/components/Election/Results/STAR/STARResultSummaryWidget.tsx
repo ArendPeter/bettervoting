@@ -5,7 +5,7 @@ import { starResults } from '@equal-vote/star-vote-shared/domain_model/ITabulato
 import BarChartIcon from '@mui/icons-material/BarChart';
 import PieChartIcon from '@mui/icons-material/PieChart';
 import { useTranslation } from 'react-i18next';
-import STAREXtraContext from './STARExtraContext';
+import STARExtraContext from './STARExtraContext';
 import WidgetContainer from '../components/WidgetContainer';
 import Widget from '../components/Widget';
 import ResultsBarChart from '../components/ResultsBarChart';
@@ -86,7 +86,7 @@ const STARResultSummaryWidget = ({ results, roundIndex, t }: {results: starResul
             <Widget title={t('results.star.runoff_title')}>
                 {(t('results.star.runoff_description') as Array<String>).map( (s, i) => <p key={i}>{s}</p>)}
                 {pie ? 
-                    <ResultsPieChart data={pieData} star />
+                    <ResultsPieChart data={pieData} star runoff/>
                 :
                 <>
                     <ResultsBarChart data={runoffData} star runoff percentage sortFunc={false} majorityLegend={t('results.star.runoff_majority')} />
@@ -108,9 +108,8 @@ const STARResultSummaryWidget = ({ results, roundIndex, t }: {results: starResul
                         <PieChartIcon sx={{transform: 'scale(.7)'}}/>
                     </ToggleButton>
                 </ToggleButtonGroup>
-                <STAREXtraContext results={results} />
+                <STARExtraContext results={results} />
             </Widget>
-            {/* <STAREXtraContext results={results} /> */}
         </WidgetContainer>
         </Box>
     );
