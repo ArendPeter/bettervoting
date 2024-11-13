@@ -17,14 +17,10 @@ import WidgetContainer from "./components/WidgetContainer";
 import ResultsBarChart from "./components/ResultsBarChart";
 import HeadToHeadWidget from "./components/HeadToHeadWidget";
 import useRace, { RaceContextProvider } from "~/components/RaceContextProvider";
-<<<<<<< Updated upstream
 import useAnonymizedBallots from "~/components/AnonymizedBallotsContextProvider";
 import { getBallotWeights, getTotalBallots } from "@equal-vote/star-vote-shared/domain_model/Weighting";
-=======
-import VoterProfileWidget from "./components/VoterProfileWidget";
 import { Candidate } from "@equal-vote/star-vote-shared/domain_model/Candidate";
 import VoterIntentWidget from "./components/VoterIntentWidget";
->>>>>>> Stashed changes
 
 function STARResultsViewer({ filterRandomFromLogs }: {filterRandomFromLogs: boolean }) {
   let i = 0;

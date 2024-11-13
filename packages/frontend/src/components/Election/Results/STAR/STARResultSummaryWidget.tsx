@@ -20,8 +20,6 @@ const STARResultSummaryWidget = ({ results, roundIndex, t }: {results: starResul
     const weights = getBallotWeights(ballots ?? [])
     const totalBallots = getTotalBallots(weights)
 
-    console.log('length', weights.length, totalBallots)
-
     const prevWinners = results.roundResults
         .filter((_, i) => i < roundIndex)
         .map(round => round.winners)

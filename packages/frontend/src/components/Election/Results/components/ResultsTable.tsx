@@ -1,6 +1,6 @@
 import { TableContainer } from "@mui/material";
 
-export default ({ className, data, minCellWidth = "120px" }) => {
+export default ({ className, data, minCellWidth = "120px"}) => {
   let c = `resultTable ${className}`;
 
   return (

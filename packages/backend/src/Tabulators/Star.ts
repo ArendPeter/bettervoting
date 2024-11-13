@@ -43,7 +43,6 @@ export function Star(candidates: string[], votes: ballot[], nWinners = 1, random
   // Run election rounds until there are no remaining candidates
   // Keep running elections rounds even if all seats have been filled to determine candidate order
   while (remainingCandidates.length > 0) {
-    console.log('length', weights.length, getTotalBallots(weights))
     const roundResults = runStarRound(summaryData, remainingCandidates, getTotalBallots(weights))
     if ((results.elected.length + results.tied.length + roundResults.winners.length) <= nWinners) {
       // There are enough seats available to elect all winners of current round
