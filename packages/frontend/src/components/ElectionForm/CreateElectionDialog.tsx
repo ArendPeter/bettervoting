@@ -10,6 +10,7 @@ import { usePostElection } from "~/hooks/useAPI";
 import { TermType } from "@equal-vote/star-vote-shared/domain_model/ElectionSettings";
 import { useNavigate } from "react-router";
 import { TimeZone } from "@equal-vote/star-vote-shared/domain_model/Util";
+import { useCookie } from "~/hooks/useCookie";
 
 /////// PROVIDER SETUP /////
 export interface ICreateElectionContext {
@@ -147,6 +148,8 @@ const StepButtons = ({ activeStep, setActiveStep, canContinue }: { activeStep: n
 const CreateElectionDialog = () => {
     const createElectionContext = useContext(CreateElectionContext);
 
+    const [tempID] = useCookie('temp_id', '0')
+
     const [activeStep, setActiveStep] = useState(0);
 
     const onClose = () => {
@@ -188,7 +191,7 @@ const CreateElectionDialog = () => {
 
     const onAddElection = async (election) => {
         // calls post election api, throws error if response not ok
-        election.owner_id = authSession.getIdField('sub');
+        election.owner_id = authSession.isLoggedIn() ? authSession.getIdField('sub') : tempID;
 
         const newElection = await postElection({
             Election: election,

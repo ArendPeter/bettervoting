@@ -68,7 +68,9 @@ const electionPostAuthMiddleware = async (req: IElectionRequest, res: any, next:
             roles: [],
             permissions: []
         }
-        if (req.user && req.election && req.user.typ != 'TEMP_ID'){
+        const hoursSinceCreate = (new Date().getTime() - new Date(election.create_date).getTime()) / (1000 * 60 * 60)
+        const ownershipAllowed = req.user.typ == 'TEMP_ID' ? (hoursSinceCreate < 10) : true;
+        if (req.user && req.election && ownershipAllowed){
           if (req.user.sub === req.election.owner_id){
             req.user_auth.roles.push(roles.owner)
           }
