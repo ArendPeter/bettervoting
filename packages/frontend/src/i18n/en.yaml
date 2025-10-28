@@ -829,6 +829,11 @@ draft_warning:
     All ballots will be counted as test votes and
     shall be reset prior to the final {{election}}.
 
+temporary_access_warning:
+  title: Temporary Access
+  description: >
+    Your edit access to this {{election}} is temporary. Create an account to unlock permanent access to this {{election}}.
+
 archived_warning:
   title: Election is Archived
   description: >

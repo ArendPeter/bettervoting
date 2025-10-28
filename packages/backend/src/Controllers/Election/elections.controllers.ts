@@ -7,6 +7,7 @@ import { roles } from "@equal-vote/star-vote-shared/domain_model/roles"
 import { getPermissions } from '@equal-vote/star-vote-shared/domain_model/permissions';
 import { getOrCreateElectionRoll, checkForMissingAuthenticationData, getVoterAuthorization } from "../Roll/voterRollUtils"
 import { ElectionRoll } from '@equal-vote/star-vote-shared/domain_model/ElectionRoll';
+import { sharedConfig } from '@equal-vote/star-vote-shared/config';
 
 
 var ElectionsModel =  ServiceLocator.electionsDb();
@@ -69,7 +70,7 @@ const electionPostAuthMiddleware = async (req: IElectionRequest, res: any, next:
             permissions: []
         }
         const hoursSinceCreate = (new Date().getTime() - new Date(election.create_date).getTime()) / (1000 * 60 * 60)
-        const ownershipAllowed = req.user.typ == 'TEMP_ID' ? (hoursSinceCreate < 10) : true;
+        const ownershipAllowed = req.user.typ == 'TEMP_ID' ? (hoursSinceCreate < sharedConfig.TEMPORARY_ACCESS_HOURS) : true;
         if (req.user && req.election && ownershipAllowed){
           if (req.user.sub === req.election.owner_id){
             req.user_auth.roles.push(roles.owner)

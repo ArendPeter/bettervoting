@@ -16,6 +16,7 @@ import useAuthSession from '../../AuthSessionContextProvider';
 import useFeatureFlags from '../../FeatureFlagContextProvider';
 import ElectionAuthForm from '~/components/ElectionForm/Details/ElectionAuthForm';
 import useSnackbar from "~/components/SnackbarContext";
+import TemporaryAccessWarning from "../TemporaryAccessWarning";
 
 type SectionProps = {
     text: {[key: string]: string}
@@ -267,16 +268,13 @@ const AdminHome = () => {
     />
 
     const HeaderSection = () => {
-        return <Box width='100%'>
-
-            {
-            /* Sometimes the email blast will bug, and then this message will make the UX of the bug worse */
-            /*{(election.state === 'open' || election.state == 'finalized') && election.settings.invitation &&
-                <Typography align='center' gutterBottom variant="h6" component="h6" >
-                    {t('admin_home.header_invitations_sent')}
-                </Typography>
-            }*/}
-
+        /* Sometimes the email blast will bug, and then this message will make the UX of the bug worse */
+        /*{(election.state === 'open' || election.state == 'finalized') && election.settings.invitation &&
+            <Typography align='center' gutterBottom variant="h6" component="h6" >
+                {t('admin_home.header_invitations_sent')}
+            </Typography>
+        }*/
+        return <>
             {election.state === 'finalized' && election.start_time &&
                 <Typography align='center' gutterBottom variant="h6" component="h6" >
                     {t('admin_home.header_start_time', {datetime: election.start_time})}
@@ -297,7 +295,7 @@ const AdminHome = () => {
                     {t('admin_home.header_ended_time', {datetime: election.end_time})}
                 </Typography>
             }
-        </Box>
+        </>
     }
 
     const FinalizeSection = () => <Box sx={{maxWidth: 800}}>
@@ -343,6 +341,7 @@ const AdminHome = () => {
         gap={6}
         sx={{ width: '100%', maxWidth: 800, margin: 'auto' }}
     >
+        <TemporaryAccessWarning />
         <HeaderSection />
         <ElectionDetailsInlineForm />
         {(election.state !== 'draft' && election.state !== 'finalized') && 
