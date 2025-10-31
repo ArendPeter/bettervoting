@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router';
 import EnhancedTable from '../EnhancedTable';
 import useSnackbar from '../SnackbarContext';
 import { useSessionStorage } from '~/hooks/useSessionStorage';
+import { useCookie } from '~/hooks/useCookie';
 
 const ElectionsYouManage = () => {
     const navigate = useNavigate();
@@ -17,7 +18,7 @@ const ElectionsYouManage = () => {
 
     // Note: We handle the claim flow here since it's the first page after login
     const [electionToClaim, setElectionToClaim] = useSessionStorage('election_to_claim', '');
-    const [claimKey, setClaimKey, removeClaimKey] = useSessionStorage(`${electionToClaim}_claim_key`, '');
+    const [claimKey, setClaimKey] = useCookie(`${electionToClaim}_claim_key`, '');
     const {makeRequest: claim} = useClaimElection(electionToClaim);
 
     // Claim and fetch are in the same
@@ -26,7 +27,7 @@ const ElectionsYouManage = () => {
         if(electionToClaim){
             claim({claim_key: claimKey}).then(res => {
                 // @ts-ignore
-                if(res.election){
+                if(res.success){
                     setSnack({
                         message: `Election has been claimed to your account`,
                         severity: 'success',
@@ -34,7 +35,7 @@ const ElectionsYouManage = () => {
                         autoHideDuration: 6000,
                     })
                     setElectionToClaim('')
-                    removeClaimKey();
+                    setClaimKey(null);
                 }
             })
             return;

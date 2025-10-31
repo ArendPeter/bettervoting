@@ -22,10 +22,6 @@ export const useSessionStorage = (key, defaultValue, updateRate = null) => {
         setStoredValue(newValue)
     }
 
-    const remove = () => {
-        sessionStorage.remove(key);
-    }
-
     useEffect(() => {
         if (updateRate) {
             const interval = setInterval(() => {
@@ -34,5 +30,5 @@ export const useSessionStorage = (key, defaultValue, updateRate = null) => {
             return () => clearInterval(interval); //Cleanup function
         }
     }, [value])
-    return [value, setValue, remove];
+    return [value, setValue];
 };

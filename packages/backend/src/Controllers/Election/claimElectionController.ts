@@ -12,8 +12,14 @@ const className = "election.Controllers";
 
 const claimElection = async (req: IElectionRequest, res: Response, next: NextFunction) => {
     Logger.info(req, `${className}.claimElection ${req.election.election_id}`);
-    // temp_id will be verify against the election owner id to grant the owner role (even if we're logged in)
+    // temp_id will be verified against the election owner id to grant the owner role (even if we're logged in)
     expectPermission(req.user_auth.roles, permissions.canClaimElection)
+
+    // check for no-op
+    if(req.election.owner_id == req.user.sub){
+        res.json({ success: true })
+        return;
+    }
 
     // must be logged in
     if(req.user.typ != 'ID'){
@@ -33,7 +39,7 @@ const claimElection = async (req: IElectionRequest, res: Response, next: NextFun
         throw new BadRequest(failMsg)
     }
 
-    res.json({ election: updatedElection })
+    res.json({ success: true })
 }
 
 export {claimElection}

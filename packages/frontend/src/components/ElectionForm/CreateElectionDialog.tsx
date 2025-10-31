@@ -10,7 +10,7 @@ import { usePostElection } from "~/hooks/useAPI";
 import { TermType } from "@equal-vote/star-vote-shared/domain_model/ElectionSettings";
 import { useNavigate } from "react-router";
 import { TimeZone } from "@equal-vote/star-vote-shared/domain_model/Util";
-import { useCookie } from "~/hooks/useCookie";
+import { setCookie, useCookie } from "~/hooks/useCookie";
 
 /////// PROVIDER SETUP /////
 export interface ICreateElectionContext {
@@ -201,7 +201,8 @@ const CreateElectionDialog = () => {
         })
         if (!newElection) throw Error("Error submitting election");
 
-        sessionStorage.setItem(`${newElection.election.election_id}_claim_key`, claimKey);
+        // The useCookie pattern won't work since I don't know election_id until now
+        setCookie(`${newElection.election.election_id}_claim_key`, claimKey, null)
 
         navigate(`/${newElection.election.election_id}/admin`)
         onClose()
