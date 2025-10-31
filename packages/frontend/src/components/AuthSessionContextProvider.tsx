@@ -10,7 +10,7 @@ const keycloakBaseUrl = process.env.REACT_APP_KEYCLOAK_URL;
 const keycloakAuthConfig = {
     clientId: 'web',
     responseType: 'code',
-    redirectUri: `${window.location.href.split('?')[0]}`,
+    redirectUri: window.location.href.split('?')[0],
     logoutUri: window.location.origin,
     endpoints: {
         login: `${keycloakBaseUrl}/auth`,
@@ -42,7 +42,7 @@ export function AuthSessionContextProvider({ children }: { children: React.React
     const [refreshToken, setRefreshToken] = useCookie('refresh_token', null, 24 * 5)
 
     const isLoggedIn = () => {
-        // the backend uses the idToken to determine if the user is logged in, so it's a better use than the accessToken
+        // the backend uses the idToken to determine if the user is logged in, so it's a more accurate reference point
         return idToken !== null
     }
 

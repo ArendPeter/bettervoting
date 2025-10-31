@@ -1,9 +1,7 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import { Accordion, AccordionDetails, AccordionSummary, Box, IconButton, Link, Menu, MenuItem } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Box, IconButton, Link, MenuItem } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import useAuthSession from './AuthSessionContextProvider';
@@ -11,15 +9,12 @@ import { useThemeSelector } from '../theme';
 import useFeatureFlags from './FeatureFlagContextProvider';
 import { CreateElectionContext } from './ElectionForm/CreateElectionDialog';
 import { openFeedback, useSubstitutedTranslation } from './util';
-import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
 import { makeID, ID_PREFIXES, ID_LENGTHS } from '@equal-vote/star-vote-shared/utils/makeID';
 
 import { ReturnToClassicContext } from './ReturnToClassicDialog';
 import { useCookie } from '~/hooks/useCookie';
 import NavMenu from './NavMenu';
 import { PrimaryButton } from './styles';
-import { useClaimElection } from '~/hooks/useAPI';
-import useSnackbar from './SnackbarContext';
 
 const headerTextColor = 'primary.contrastText'
 const Header = () => {

@@ -15,13 +15,12 @@ const ElectionsYouManage = () => {
 
     const { data, isPending, makeRequest: fetchElections } = useGetElections()
 
-
     // Note: We handle the claim flow here since it's the first page after login
     const [electionToClaim, setElectionToClaim] = useSessionStorage('election_to_claim', '');
     const [claimKey, setClaimKey] = useCookie(`${electionToClaim}_claim_key`, '');
     const {makeRequest: claim} = useClaimElection(electionToClaim);
 
-    // Claim and fetch are in the same
+    // Claim and fetch are in the same useEffect so that we can guarantee the correct sequence
     useEffect(() => {
         if(!authSession.isLoggedIn()) return;
         if(electionToClaim){
@@ -34,10 +33,9 @@ const ElectionsYouManage = () => {
                         open: true,
                         autoHideDuration: 6000,
                     })
-                    setElectionToClaim('')
                     setClaimKey(null);
                 }
-            })
+            }).finally(() => setElectionToClaim(''))
             return;
         }
         fetchElections();
@@ -71,13 +69,12 @@ const ElectionsYouManage = () => {
         }else{
             return [];
         }
-    // NOTE: using just data wouldn't detect changes since the root reference didn't change
     }, [data]);
             
     return <EnhancedTable
         title='My Elections & Polls'
         headKeys={['title', 'update_date', 'election_state', 'start_time', 'end_time', 'description']}
-        isPending={isPending || !authSession.isLoggedIn()}
+        isPending={isPending || !authSession.isLoggedIn() || electionToClaim}
         pendingMessage='Loading Elections...'
         data={managedElectionsData}
         handleOnClick={(row) => navigate(`/${String(row.raw.election_id)}`)}

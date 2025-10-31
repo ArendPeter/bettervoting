@@ -73,7 +73,7 @@ const electionPostAuthMiddleware = async (req: IElectionRequest, res: any, next:
         // HACK: The convention is the only way we can tell if an election is owned by a temp_id or a logged in user
         // temp_id follows v-abc123, whereas keycloak is a uuid
         // we should only allow temporary edit permissions on elections that follow the temp_id convention
-        // this alleviates any concerns that some could gain edit access by tweaking their temp_user value
+        // this alleviates any concerns that someone could gain edit access by tweaking their local temp_id cookie
         const ownerIsTempUser = req.election.owner_id.startsWith('v-');
         const hoursSinceCreate = (new Date().getTime() - new Date(election.create_date).getTime()) / (1000 * 60 * 60)
         const tempUserAuth =
