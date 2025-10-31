@@ -2,7 +2,7 @@ import { Box, capitalize, Dialog, DialogActions, DialogContent, DialogTitle, For
 import { PrimaryButton, SecondaryButton, Tip } from "../styles";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { ElectionTitleField } from "./Details/ElectionDetailsForm";
-import { RowButtonWithArrow, useSubstitutedTranslation } from "../util";
+import { hashString, RowButtonWithArrow, useSubstitutedTranslation } from "../util";
 import { NewElection } from "@equal-vote/star-vote-shared/domain_model/Election";
 import { DateTime } from "luxon";
 import useAuthSession from "../AuthSessionContextProvider";
@@ -193,10 +193,15 @@ const CreateElectionDialog = () => {
         // calls post election api, throws error if response not ok
         election.owner_id = authSession.isLoggedIn() ? authSession.getIdField('sub') : tempID;
 
+        const claimKey = crypto.randomUUID();
+        election.claim_key_hash = hashString(claimKey);
+
         const newElection = await postElection({
             Election: election,
         })
         if (!newElection) throw Error("Error submitting election");
+
+        sessionStorage.setItem(`${newElection.election.election_id}_claim_key`, claimKey);
 
         navigate(`/${newElection.election.election_id}/admin`)
         onClose()

@@ -1,19 +1,46 @@
 import { useEffect, useMemo } from 'react'
 import { Election } from "@equal-vote/star-vote-shared/domain_model/Election"
 import useAuthSession from '../AuthSessionContextProvider';
-import { useGetElections } from '../../hooks/useAPI';
+import { useClaimElection, useGetElections } from '../../hooks/useAPI';
 import { useNavigate } from 'react-router';
 import EnhancedTable from '../EnhancedTable';
+import useSnackbar from '../SnackbarContext';
+import { useSessionStorage } from '~/hooks/useSessionStorage';
 
 const ElectionsYouManage = () => {
     const navigate = useNavigate();
     const authSession = useAuthSession()
+    const { setSnack } = useSnackbar()
 
     const { data, isPending, makeRequest: fetchElections } = useGetElections()
 
+
+    // Note: We handle the claim flow here since it's the first page after login
+    const [electionToClaim, setElectionToClaim] = useSessionStorage('election_to_claim', '');
+    const [claimKey, setClaimKey, removeClaimKey] = useSessionStorage(`${electionToClaim}_claim_key`, '');
+    const {makeRequest: claim} = useClaimElection(electionToClaim);
+
+    // Claim and fetch are in the same
     useEffect(() => {
-        fetchElections()
-    }, [authSession.isLoggedIn()]);
+        if(!authSession.isLoggedIn()) return;
+        if(electionToClaim){
+            claim({claim_key: claimKey}).then(res => {
+                // @ts-ignore
+                if(res.election){
+                    setSnack({
+                        message: `Election has been claimed to your account`,
+                        severity: 'success',
+                        open: true,
+                        autoHideDuration: 6000,
+                    })
+                    setElectionToClaim('')
+                    removeClaimKey();
+                }
+            })
+            return;
+        }
+        fetchElections();
+    },[authSession.isLoggedIn(), electionToClaim])
 
     const userEmail = authSession.getIdField('email')
     const id = authSession.getIdField('sub')
@@ -43,12 +70,13 @@ const ElectionsYouManage = () => {
         }else{
             return [];
         }
+    // NOTE: using just data wouldn't detect changes since the root reference didn't change
     }, [data]);
             
     return <EnhancedTable
         title='My Elections & Polls'
         headKeys={['title', 'update_date', 'election_state', 'start_time', 'end_time', 'description']}
-        isPending={isPending}
+        isPending={isPending || !authSession.isLoggedIn()}
         pendingMessage='Loading Elections...'
         data={managedElectionsData}
         handleOnClick={(row) => navigate(`/${String(row.raw.election_id)}`)}

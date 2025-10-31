@@ -9,7 +9,6 @@ import { BadRequest, InternalServerError, Unauthorized } from "@curveball/http-e
 import { Election } from "@equal-vote/star-vote-shared/domain_model/Election";
 import { IElectionRequest } from "../../IRequest";
 import { Response, NextFunction } from 'express';
-import { hashString } from "../controllerUtils";
 import { makeUniqueID, ID_PREFIXES, ID_LENGTHS } from "@equal-vote/star-vote-shared/utils/makeID";
 
 const registerVoter = async (req: IElectionRequest, res: Response, next: NextFunction) => {

@@ -1,8 +1,8 @@
 import Grid from "@mui/material/Grid";
-import { Box, Divider } from "@mui/material";
-import { Typography } from "@mui/material";
+import { Box, Button, Divider } from "@mui/material";
+import { Link, Typography } from "@mui/material";
 import { PrimaryButton } from "../../styles";
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ShareButton from "../ShareButton";
 import { useArchiveEleciton, useSetOpenState, useFinalizeElection, usePostElection, useSetPublicResults } from "../../../hooks/useAPI";
 import { useSubstitutedTranslation } from '../../util';
@@ -224,6 +224,9 @@ const AdminHome = () => {
         />
     }
 
+    const claimElection = () => {
+    }
+
     const ArchiveElectionSection = () => <Section
         text={t('admin_home.archive')}
         includeDivider={false}
@@ -319,7 +322,7 @@ const AdminHome = () => {
         </Grid>
         <Grid xs={12} sx={{ p: 1, pt: 0, display: 'flex', alignItems: 'center' }}>
             <PrimaryButton
-                disabled={election.title.length === 0 || election.races.length === 0 || !hasPermission('canEditElectionState')}
+                disabled={election.title.length === 0 || election.races.length === 0 || !hasPermission('canEditElectionState') || !authSession.isLoggedIn()}
                 fullWidth
                 onClick={() => finalizeElection()}
                 sx={{mt: 2}}
@@ -329,6 +332,19 @@ const AdminHome = () => {
                 </Typography>
             </PrimaryButton>
         </Grid>
+        {!authSession.isLoggedIn() && 
+        <Grid xs={12} sx={{ p: 1, pt: 0, display: 'flex', alignItems: 'center' }}>
+            <Typography align='center' variant="body1" sx={{ pl: 2, m:'auto' }}>
+                {/* I'm setting an href here and an onClick, so that the url styling will work like other a-href components*/}
+                <a href='#free-account-text' id='free-account-text' onClick={() => {
+                    sessionStorage.setItem('election_to_claim', election.election_id)
+                    authSession.openLogin()
+                }}>
+                    Create a free account
+                </a>
+                &nbsp;to finalize your election!
+            </Typography>
+        </Grid>}
     </Box>
     
     const flags = useFeatureFlags();

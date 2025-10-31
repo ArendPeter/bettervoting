@@ -3,7 +3,7 @@ import useElection from "../ElectionContextProvider";
 import type { ElectionState } from "@equal-vote/star-vote-shared/domain_model/Election"
 
 export default function ElectionStateWarning 
-        ({state, title, description, children}: {state?: ElectionState, title: string, description: string, children?: any}) {
+        ({state, title, description, hideIcon=false, children}: {state?: ElectionState, title: string, description: string, hideIcon?: boolean, children?: any}) {
     
     const { t, election } = useElection();
     
@@ -11,7 +11,7 @@ export default function ElectionStateWarning
 
     return <Paper sx={{display: 'flex', flexDirection: 'column', maxWidth: 600, gap: 2, padding: 2, m: 'auto', mb:4}}>
         <Box display='flex' flexDirection='row' gap={2} sx={{p: 2, m: 'auto'}}>
-            <Typography component="h3">⚠️</Typography>
+            {!hideIcon && <Typography component="h3">⚠️</Typography>}
             <Box>
                 <Typography component="p"><b>{t(title)}</b></Typography>
                 <hr/>
