@@ -168,8 +168,12 @@ export const useSubstitutedTranslation = (electionTermType = 'election', v = {})
   const { t, i18n } = useTranslation()
 
   const values = processValues({
+    // Ignoring "error TS2698: Spread types may only be created from object types." since we know they'll return objects
+    // @ts-ignore
     ...t('keyword'),
+    // @ts-ignore
     ...t(`keyword.${electionTermType}`),
+    // @ts-ignore
     ...t(`keyword.${v['methodKey'] ?? 'star'}`),
     ...v, formatParams: {
       datetime: dt,
