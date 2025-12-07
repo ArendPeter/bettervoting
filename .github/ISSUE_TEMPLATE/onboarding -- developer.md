@@ -179,10 +179,9 @@ Executed by New Team Member
 
 <a name="section-6"></a>
 #### 6 - SUBMITTING YOUR FIRST PULL REQUEST
-- [ ] Read sections 3.1.a - 3.1.c in [3.1 How to make a pull request](https://github.com/hackforla/website/blob/gh-pages/CONTRIBUTING.md#31-how-to-make-a-pull-request) to learn more about how to make a pull request (PR) for the issue that you are working on and how to make changes to your PR if changes are requested by the reviewer
- - Confirm you understand the following:
-    - [ ] Please work on only one issue at a time and wait until your pull request is merged before picking up another issue.  
-    - [ ] Please keep an eye on your PR, if someone leaves you a comment asking for a change, please respond in a timely way.
+- [ ] Read [How to open a pull request](https://docs.bettervoting.com/contributions/developers/2_how_to_open_a_pull_request.html)
+- [ ] Once you've opened the pull request verify that the PR is linked in your original issue (this should happen automatically if the correct [linking convention](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue))
+- [ ] Move your issue into the "Questions / In Review" lane on the project board and a helper will come by to help review. (Feel free to proceed to [Section 7](#section-7)) while you wait)
 - [ ] Once your pull request has been accepted, post the following message in a comment below on this issue and then answer it.
    ```
    ### 6 - PULL REQUESTS update
@@ -200,26 +199,63 @@ Executed by New Team Member
 [**⇧** Table of Contents](#table-of=contents)
 
 <a name="section-7"></a>
-#### 7 - ADVANCED READING TO READY YOU FOR LARGER MORE COMPLEX ISSUES
-- [ ] Read the [Start Here - Developers](https://www.figma.com/file/0RRPy1Ph7HafI3qOITg0Mr/Hack-for-LA-Website?node-id=8583%3A0) in Figma
-- [ ] Go familiarize yourself with the [Hack for LA Design System page in Figma](https://www.figma.com/file/0RRPy1Ph7HafI3qOITg0Mr/Hack-for-LA-Website?node-id=3464%3A3) (where you can see components and their SCSS classes)
-- [ ] Post the following message in a comment below on this issue and then answer it.
+#### 7 - FOUNDATIONAL READING TO GET FAMILIAR WITH THE PROJECT
+
+BetterVoting Operations
+- [ ] Read the [BetterVoting about page](https://bettervoting.com/about) to get a sense for who's who in our leadership team.
+- [ ] BetterVoting is a project of the Equal Vote Coalition. Read the [equal.vote](https://www.equal.vote/) homepage to learn more about our mission. Equal Vote advocates for better voting methods, and bettervoting.com is a key tool to make it easy for organizations.
+- [ ] Skim [STAR Voting's Case Studies](https://www.starvoting.org/case_studies). Many of these elections would not have been possible without BetterVoting.com, and as we build the website we hope to grow STAR Voting's adoption even more!
     ```
-    ### 7 - ADVANCED READING TO READY YOU FOR LARGER MORE COMPLEX ISSUES update
+    ### 7 - FOUNDATIONAL READING TO GET FAMILIAR WITH THE PROJECT update
     >How many hours did it take you to finish this step?
     
     A:
-    >Do you have any questions about what you read?
-       - [ ] yes, I had questions, and I left comments in the appropriate issues [WE NEED TO UPDATE THOSE TWO RESOURCES TO HAVE LINKS TO ISSUES WHERE PEOPLE CAN PUT QUESTIONS AND MOVE THE ISSUES TO THE QUESTIONS/REVIEW COLUMN]
-       - [ ] no, I did not have any questions
-       
+
     [return to section 7](#section-7)
     ```
 
 [**⇧** Table of Contents](#table-of=contents)
 
 <a name="section-8"></a>
-#### 8 - MOVE ON TO 2ND GOOD FIRST ISSUE (AKA, IT GETS EASIER AND DID YOU BRANCH CORRECTLY?)
+#### 8 - MOVE ON TO 2ND GOOD FIRST ISSUE (AKA, IT GETS EASIER!)
+
+Now that you've completed a good first issue, you can add yourself to the contributor list! This will also be your second good first issue.
+
+- [ ] Go to the [repository issues page](https://github.com/Equal-Vote/bettervoting/issues)
+- [ ] Click "New Issue" and select the "Blank Issue Template"
+- [ ] Fill out the form as follows
+
+Title 
+
+```
+Add <insert your name> to the contributor list
+```
+
+Overview
+
+```
+<insert your name> has completed a good first issue, and is ready to listed among the contributors. Keeping the contributor list updated allows members to get recognition and helps reflect the scope of our team. 
+```
+
+Action Items
+
+```
+- [ ] Open the en.yaml file and find search for "contributors:"
+- [ ] Add an entry to the end of the contributors list with <insert your GitHub user id>
+- [ ] For the GitHub image id right click on your profile picture on github
+https://avatars.githubusercontent.com/u/9289903?v=4
+<img width="319" height="287" alt="Image" src="https://github.com/user-attachments/assets/804f92be-45fe-4420-9fd3-c3573794bafb" />
+```
+
+Resources
+
+```
+bettervoting.com/about
+```
+
+- [ ] Fill out the form as follows
+
+BetterVoting i
 - Do another good first issue (two per person total).  We have you do another simple issue because this we want you to 
    - see the difference once you have successful setup your dev environment
    - see how each PR gets easier to do with repetition
