@@ -42,13 +42,14 @@ export default class StripeCheckoutSessionsDB {
     }
 
     // Audit/support total only — voter_limit itself is authoritative on the election row.
+    // voter_count_granted is already the aggregate across any voter_limit line items in
+    // the row (set at insert time), so no per-product filtering is needed here.
     async sumVoterLimitPurchases(election_id: string, ctx: ILoggingContext): Promise<number> {
         Logger.debug(ctx, `${tableName}.sumVoterLimitPurchases election_id=${election_id}`);
         const result = await this._postgresClient
             .selectFrom(tableName)
             .select((eb) => eb.fn.sum<number>('voter_count_granted').as('total'))
             .where('election_id', '=', election_id)
-            .where('product', '=', 'voter_limit')
             .where('status', '=', 'paid')
             .executeTakeFirst();
         return Number(result?.total ?? 0);

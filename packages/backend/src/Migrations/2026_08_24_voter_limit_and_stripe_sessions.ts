@@ -25,7 +25,7 @@ export async function up(db: Kysely<any>): Promise<void> {
         .addColumn('id', 'serial', (col) => col.primaryKey())
         .addColumn('election_id', 'varchar', (col) => col.notNull())
         .addColumn('user_id', 'varchar', (col) => col.notNull())
-        .addColumn('product', 'varchar', (col) => col.notNull())
+        .addColumn('product', 'jsonb', (col) => col.notNull())
         .addColumn('amount_cents', 'integer', (col) => col.notNull())
         .addColumn('voter_count_granted', 'integer')
         .addColumn('stripe_checkout_session_id', 'varchar', (col) => col.notNull().unique())

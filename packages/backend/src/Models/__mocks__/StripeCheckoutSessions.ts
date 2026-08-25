@@ -25,7 +25,7 @@ export default class StripeCheckoutSessionsDB {
 
     async sumVoterLimitPurchases(election_id: string, ctx: ILoggingContext): Promise<number> {
         return this._sessions
-            .filter(s => s.election_id === election_id && s.product === 'voter_limit' && s.status === 'paid')
+            .filter(s => s.election_id === election_id && s.status === 'paid')
             .reduce((sum, s) => sum + (s.voter_count_granted ?? 0), 0);
     }
 }
