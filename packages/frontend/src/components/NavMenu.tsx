@@ -62,7 +62,7 @@ export default function({name, onClick=undefined, desktopText=undefined, mobileI
                 '&:hover': {textDecoration: 'underline'}
             }} 
         >
-            <Typography component="p" sx={navTextSx} color={headerTextColor} textTransform='none'>
+            <Typography component="p" color={headerTextColor} sx={{ ...(navTextSx), textTransform: "none" }}>
                 {desktopText} 
             </Typography>
         </Button>}
@@ -74,17 +74,18 @@ export default function({name, onClick=undefined, desktopText=undefined, mobileI
                 horizontal: 'left',
             }}
             keepMounted
-            MenuListProps={{
+            slotProps={{ list: {
                 onMouseEnter: handleHover,
                 onMouseLeave: handleCloseHover,
                 style: { pointerEvents: "auto" }
-            }}
+            } }}
             transformOrigin={{
                 vertical: 'top',
                 horizontal: 'left',
             }}
             open={Boolean(anchorEl)}
             onClose={handleClose}
+            disableAutoFocusItem // This was added since clicking an item would have it be highlghted on the next page 
             sx={{ [`&.${popoverClasses.root}`]: {xs: {}, md: { pointerEvents: "none" }}, }}
             disableScrollLock
             // https://github.com/mui/material-ui/issues/10072

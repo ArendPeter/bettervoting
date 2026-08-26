@@ -2,12 +2,12 @@ import { Box, Button, Pagination } from "@mui/material";
 import React, { ReactNode } from "react";
 import { useState } from 'react';
 import Typography from '@mui/material/Typography';
-import { commaListFormatter, formatPercent, methodValueToTextKey, useSubstitutedTranslation } from '../../util';
+import { commaListFormatter, formatPercent, useSubstitutedTranslation } from '../../util';
 import STARResultSummaryWidget from "./STAR/STARResultSummaryWidget";
 import STARDetailedResults from "./STAR/STARDetailedResults";
 import STARResultDetailedStepsWidget from "./STAR/STARResultDetailedStepsWidget";
 import WinnerResultPages from "./WinnerResultPages";
-import { Race } from "@equal-vote/star-vote-shared/domain_model/Race";
+import { methodValueToTextKey, Race } from "@equal-vote/star-vote-shared/domain_model/Race";
 import { allocatedScoreResults, approvalResults, ElectionResults, irvResults, rankedRobinResults, starCandidate, starResults } from "@equal-vote/star-vote-shared/domain_model/ITabulators";
 import useElection from "../../ElectionContextProvider";
 import DetailExpander from "./components/DetailExpander";
@@ -48,7 +48,7 @@ function STARResultsViewer({ filterRandomFromLogs }: {filterRandomFromLogs: bool
         <STARDetailedResults/>
         <DetailExpander level={1}>
           <STARResultDetailedStepsWidget results={results} rounds={rounds} t={t} filterRandomFromLogs={filterRandomFromLogs}/>
-          <STAREqualPreferencesWidget frontRunners={candidates.slice(0, 2) as [starCandidate, starCandidate]}/>
+          <STAREqualPreferencesWidget frontRunners={[results.roundResults[0].winners[0], results.roundResults[0].runner_up[0]] as [starCandidate, starCandidate]}/>
           <HeadToHeadWidget/>
           <VoterProfileWidget topScore={5}/>
           {flags.isSet('ALL_STATS') && <ScoreRangeWidget/>}
@@ -320,7 +320,7 @@ function STARPRResultsViewer() {
         {flags.isSet('PR_CONTROLS') && <>
           <Typography sx={{mt: 2}}>Round Selector</Typography>
           <Pagination count={results.summaryData.weightedScoresByRound.length} page={page} onChange={handleChange} />
-          <Box display='flex' flexDirection='row' sx={{mb: 7, gap: 2}} >
+          <Box sx={{ mb: 7, gap: 2, display: "flex", flexDirection: "row" }}>
               <Button variant='outlined' onClick={() => setSortRound(page)}>Sort Candidates</Button>
               <Button variant='outlined' onClick={() => setMaxCandidates(c => c == 10 ? 1000 : 10)}>Toggle Candidate Limit</Button>
           </Box>
@@ -389,7 +389,7 @@ function STVResultsViewer() {
 
   const winIndex = (aa) => {
     const i = results.elected.findIndex(e => e.id == aa.id);
-    if(i == -1) return results.elected.length;
+    if(i == -1) return Infinity;
     return i;
   }
 
@@ -427,7 +427,22 @@ function STVResultsViewer() {
 
 export default function Results({ race, results }: {race: Race, results: ElectionResults}) {
   const { election } = useElection();
-  const showTitleAsTie = ['random', 'five_star', 'head_to_head'].includes(results.tieBreakType);
+  // For STAR, only call the result a "tie" when the WINNER was determined by a
+  // tiebreaker — i.e., the runoff head-to-head between winner and runner-up was
+  // genuinely equal. A score-round tiebreaker that only picks the runner-up
+  // (e.g. five-star tiebreak between two candidates the score leader would
+  // have beaten head-to-head anyway) is not a tie of the election outcome and
+  // shouldn't trigger the "Tied!" banner.
+  const showTitleAsTie = (() => {
+    if (results.votingMethod === 'STAR') {
+      const finalRound = results.roundResults[results.roundResults.length - 1];
+      const winner = finalRound?.winners[0] as starCandidate | undefined;
+      const runnerUp = finalRound?.runner_up[0] as starCandidate | undefined;
+      if (!winner || !runnerUp) return false;
+      return winner.votesPreferredOver[runnerUp.id] === runnerUp.votesPreferredOver[winner.id];
+    }
+    return ['random', 'five_star', 'head_to_head'].includes(results.tieBreakType);
+  })();
   // added a null check for sandbox support
   const removeTieBreakFromTitle = (election?.settings.break_ties_randomly ?? false) && results.tieBreakType == 'random';
 
@@ -458,26 +473,40 @@ export default function Results({ race, results }: {race: Race, results: Electio
       </Typography>
       <div className="flexContainer" style={{textAlign: 'center'}}>
         <Box sx={{pageBreakAfter:'avoid', pageBreakInside:'avoid', mx: 10}}>
+        {results.summaryData.candidates.length === 1 && <>
+          <Typography variant='h5'>⭐ {results.summaryData.candidates[0].name} wins uncontested ⭐</Typography>
+          {results.writeInDiagnostics?.numScoresDisregarded > 0 &&
+            <Typography component="p" sx={{color: '#808080', fontSize: '0.9rem', mt: 1}}>
+              {results.writeInDiagnostics.numScoresDisregarded} write-in score{results.writeInDiagnostics.numScoresDisregarded === 1 ? '' : 's'} not counted.{' '}
+              <a href="https://docs.bettervoting.com/help/faq.html#write-in-scores-not-counted" target="_blank" rel="noopener noreferrer" style={{color: '#808080'}}>Learn more</a>
+            </Typography>
+          }
+        </>}
         {results.summaryData.nTallyVotes == 0 && <h2>{t('results.waiting_for_results')}</h2>}
-        {results.summaryData.nTallyVotes == 1 && <p>{t('results.single_vote')}</p> }
-        {results.summaryData.nTallyVotes > 1 && <>
+        {results.summaryData.nTallyVotes > 0 && <>
           {showTitleAsTie?
             <>
             <Typography variant="h5" sx={{fontWeight: 'bold'}}>{t('results.tie_title')}</Typography>
             {!removeTieBreakFromTitle && <Typography component="p" sx={{fontWeight: 'bold'}}>
-                {t('results.tiebreak_subtitle', {names: results.elected.map(c => c.name)})}
+                {/* HACK: the backend doesn't actually export the tiebreak list aside from the roundResult logs, but I happen to know that the backend pre-sorted candidates */}
+                {t('results.random_tiebreak_subtitle', {names: results.elected.map(c => c.name), tiebreak_candidate_names: results.summaryData.candidates.map(c => c.name)})}
             </Typography>}
             </>
           :
             <Typography variant='h5'>
             {(winnersLength < 80) ? 
-              <>⭐{winnersText}{t('results.win_title_postfix', {count: results.elected.length})} ⭐</>
+              <>⭐ {winnersText}{t('results.win_title_postfix', {count: results.elected.length})} ⭐</>
             :
               [t('results.win_long_title_prefix'), ...results.elected.map(elected => ([<br key={elected.index}/>, `${elected.name}`])).flat()]
             }
             </Typography>
           }
           <Typography variant="h6">{t('results.vote_count', {n: results.summaryData.nTallyVotes})}</Typography>
+            {results.writeInDiagnostics?.numScoresDisregarded > 0 &&
+              <Typography component="p" sx={{color: '#808080', fontSize: '0.9rem', mt: 1}}>
+                {results.writeInDiagnostics.numScoresDisregarded} write-in vote{results.writeInDiagnostics.numScoresDisregarded === 1 ? '' : 's'} not included in results
+              </Typography>
+            }
             {/* Voting method and learning link */}
             <Typography component="p" sx={{color: '#808080', fontSize: '1rem', marginTop: '20px', mb: 2}}>
                 {t('results.method_context', { voting_method: votingMethod })}
@@ -492,7 +521,7 @@ export default function Results({ race, results }: {race: Race, results: Electio
             </Typography>
         </>}
         </Box>
-        {results.summaryData.nTallyVotes > 1 &&
+        {results.summaryData.nTallyVotes >= 1 && results.summaryData.candidates.length > 1 &&
           <>
           {results.votingMethod === "STAR" && <STARResultsViewer filterRandomFromLogs={removeTieBreakFromTitle}/>}
           {results.votingMethod === "Approval" && <ApprovalResultsViewer/>}

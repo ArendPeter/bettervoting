@@ -4,15 +4,17 @@ import { Box, IconButton, Paper, Typography } from "@mui/material"
 import ElectionStateChip from './ElectionStateChip';
 import { PrimaryButton } from '../../styles';
 import useElection from '../../ElectionContextProvider';
-import { useSubstitutedTranslation } from '../../util';
+import { isValidDate, useSubstitutedTranslation } from '../../util';
 import EditIcon from '@mui/icons-material/Edit';
 import ElectionDetailsForm from './ElectionDetailsForm';
 import { useEditElectionDetails } from './useEditElectionDetails';
 import { FormattedDescription } from '../../FormattedDescription';
 import { Election } from '@equal-vote/star-vote-shared/domain_model/Election';
+import { DateTime } from 'luxon';
 
 export default function ElectionDetailsInlineForm() {
     const { editedElection, applyUpdate, onSave, errors, setErrors } = useEditElectionDetails()
+
     const { election } = useElection()
 
     const {t} = useSubstitutedTranslation(election.settings.term_type, {time_zone: election.settings.time_zone});
@@ -30,6 +32,7 @@ export default function ElectionDetailsInlineForm() {
         const success = await onSave()
         if (success) handleClose()
     }
+
     const timeRange = useMemo(() => {
         if (election.start_time && election.end_time) {
             return t('admin_home.time_start_to_end', {datetime: election.start_time, datetime2: election.end_time})
@@ -52,14 +55,14 @@ export default function ElectionDetailsInlineForm() {
                         p: 4,
                     }}
                 >
-                    <Grid item container xs={11}>
-                        <Grid item xs={12}>
+                    <Grid size={11} container>
+                        <Grid size={12}>
                             <Typography variant="h3" component="h4">
                                 {election.title}
                                 <ElectionStateChip state={election.state} />
                             </Typography>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             {election.description == '' ? (
                                 <Typography gutterBottom component="p" sx={{opacity: .5}}>
                                     {t('admin_home.description_unset')}
@@ -71,11 +74,11 @@ export default function ElectionDetailsInlineForm() {
                                 />
                             )}
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <Typography sx={{mt: 2, opacity: (election.start_time || election.end_time)? 1 : .5}} component="p" variant='subtitle2'>{timeRange}</Typography>
                         </Grid>
                     </Grid>
-                    <Grid item xs={1} sx={{ m: 0, p: 1 }}>
+                    <Grid size={1} sx={{ m: 0, p: 1 }}>
 
                         <Box sx={{}}>
                             <IconButton

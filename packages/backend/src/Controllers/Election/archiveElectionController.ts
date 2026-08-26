@@ -1,7 +1,7 @@
 import ServiceLocator from '../../ServiceLocator';
 import Logger from '../../Services/Logging/Logger';
 import { permissions } from '@equal-vote/star-vote-shared/domain_model/permissions';
-import { expectPermission } from "../controllerUtils";
+import { expectPermission, expectUpdateDate } from "../controllerUtils";
 import { BadRequest, InternalServerError } from "@curveball/http-errors";
 import { Election } from '@equal-vote/star-vote-shared/domain_model/Election';
 import { IElectionRequest } from "../../IRequest";
@@ -25,7 +25,8 @@ const archiveElection = async (req: IElectionRequest, res: Response, next: NextF
 
     var failMsg = "Failed to update Election";
     election.state = 'archived'
-    const updatedElection = await ElectionsModel.updateElection(req.election, req, `Archive election`);
+    const expected_update_date = expectUpdateDate(req);
+    const updatedElection = await ElectionsModel.updateElection(req.election, req, `Archive election`, expected_update_date);
     if (!updatedElection) {
         Logger.info(req, failMsg);
         throw new BadRequest(failMsg)

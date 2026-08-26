@@ -1,4 +1,4 @@
-import ListItem from "@mui/material/ListItem"
+import ListItemButton from "@mui/material/ListItemButton"
 import ListItemIcon from "@mui/material/ListItemIcon"
 import ListItemText from "@mui/material/ListItemText"
 import Fade from "@mui/material/Fade"
@@ -16,7 +16,7 @@ import useElection from '../ElectionContextProvider';
 
 import IosShareIcon from '@mui/icons-material/IosShare';
 
-export default function ShareButton({ url }: { url: string }) {
+export default function ShareButton({ url, textKey='share.button' }: { url: string, textKey?: string }) {
     const { setSnack } = useSnackbar()
     const [anchorElNav, setAnchorElNav] = useState(null)
 
@@ -96,7 +96,7 @@ export default function ShareButton({ url }: { url: string }) {
             <SecondaryButton
                 fullWidth
                 onClick={handleOpenNavMenu}>
-                {t('share.button')}
+                {t(textKey)}
                 <IosShareIcon sx={{pl: 1}} />
             </SecondaryButton>
             <Fade timeout={350}>
@@ -115,8 +115,7 @@ export default function ShareButton({ url }: { url: string }) {
                         }}
                         open={Boolean(anchorElNav)}
                         onClose={handleCloseNavMenu}>
-                        <ListItem
-                            button
+                        <ListItemButton
                             id="facebook"
                             onClick={handleShare}
                         >
@@ -124,9 +123,8 @@ export default function ShareButton({ url }: { url: string }) {
                                 <FacebookIcon />
                             </ListItemIcon>
                             <ListItemText primary={t('share.facebook')}/>
-                        </ListItem>
-                        <ListItem
-                            button
+                        </ListItemButton>
+                        <ListItemButton
                             id="X"
                             onClick={handleShare}
                         >
@@ -134,9 +132,8 @@ export default function ShareButton({ url }: { url: string }) {
                                 <X />
                             </ListItemIcon>
                             <ListItemText primary={t('share.X')}/>
-                        </ListItem>
-                        <ListItem
-                            button
+                        </ListItemButton>
+                        <ListItemButton
                             id="reddit"
                             onClick={handleShare}
                         >
@@ -144,9 +141,8 @@ export default function ShareButton({ url }: { url: string }) {
                                 <RedditIcon />
                             </ListItemIcon>
                             <ListItemText primary={t('share.reddit')}/>
-                        </ListItem>
-                        <ListItem
-                            button
+                        </ListItemButton>
+                        <ListItemButton
                             id="copy"
                             onClick={handleShare}
                         >
@@ -154,7 +150,7 @@ export default function ShareButton({ url }: { url: string }) {
                                 <LinkIcon />
                             </ListItemIcon>
                             <ListItemText primary={t('share.copy_link')}/>
-                        </ListItem>
+                        </ListItemButton>
                     </Menu>
                 </Paper>
             </Fade>

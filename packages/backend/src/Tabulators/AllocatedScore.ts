@@ -1,7 +1,7 @@
 import { candidate, allocatedScoreResults, allocatedScoreSummaryData, rawVote, allocatedScoreCandidate, vote } from "@equal-vote/star-vote-shared/domain_model/ITabulators";
 
 const Fraction = require('fraction.js');
-import { getSummaryData, makeAbstentionTest, makeBoundsTest } from "./Util";
+import { getSummaryData, makeAbstentionTest, makeBoundsTest, sortCandidates } from "./Util";
 import { ElectionSettings } from "@equal-vote/star-vote-shared/domain_model/ElectionSettings";
 
 interface winner_scores {
@@ -51,7 +51,7 @@ export function AllocatedScore(candidates: candidate[], votes: rawVote[], nWinne
     // Keep running elections rounds even if all seats have been filled to determine candidate order
 
     // Normalize scores array
-    let scoresNorm = votes.map(v => candidates.map(c => new Fraction(v.marks[c.id]).div(MAX_SCORE)))
+    let scoresNorm = tallyVotes.map(v => candidates.map(c => new Fraction(v.marks[c.id]).div(MAX_SCORE)))
 
     // Find number of voters and quota size
     const V = scoresNorm.length;
@@ -78,6 +78,8 @@ export function AllocatedScore(candidates: candidate[], votes: rawVote[], nWinne
             // sum scores for each candidate
             // weighted_sums[r] = sumArray(weighted_scores[r]);
         });
+        // HAZARD: inner array is positionally aligned with summaryData.candidates.
+        // See allocatedScoreSummaryData.weightedScoresByRound — reorders must permute both.
         summaryData.weightedScoresByRound.push(weighted_sums.map(w => {
             return w.valueOf()
         }))
@@ -147,7 +149,12 @@ export function AllocatedScore(candidates: candidate[], votes: rawVote[], nWinne
         let weight_on_split = findWeightOnSplit(cand_df, split_point);
 
         // quota = spent_above + weight_on_split*new_weight
-        let new_weight = (quota.sub(spent_above)).div(weight_on_split);
+        // Only used for the log line below -- updateBallotWeights recomputes this
+        // division itself, behind the same guard. weight_on_split is the weight sitting
+        // exactly on the split point, so when it is zero there is no partially
+        // represented ballot to describe. Dividing by it throws in fraction.js, which
+        // used to 500 the results endpoint for any race with no ballots.
+        let new_weight = weight_on_split.compare(0) > 0 ? (quota.sub(spent_above)).div(weight_on_split) : new Fraction(0);
         results.logs.push(
             `The ${rounded(weight_on_split)} voters who gave ${summaryData.candidates[w].name} ${rounded(split_point.mul(MAX_SCORE))} stars are partially represented. `+
             `${percent(new_weight)} of their remaining vote will go toward ${summaryData.candidates[w].name} and ${percent(new Fraction(1).sub(new_weight))} will be preserved for future rounds.`)
@@ -170,6 +177,35 @@ export function AllocatedScore(candidates: candidate[], votes: rawVote[], nWinne
     }
 
     results.other = remainingCandidates;
+
+    if(results.elected.some(elected => results.tied.includes(elected))){
+        results.tieBreakType = 'random';
+    }
+
+    // Reorder candidates so the natural index conveys meaning: elected first in
+    // election order, then non-elected by final-round weighted score (descending).
+    // Mirrors the STARPRResultsViewer sort in Results.tsx so other consumers
+    // (e.g. non-frontend viewers) get the same default ordering "for free".
+    // weightedScoresByRound is positionally aligned with summaryData.candidates,
+    // so we permute the inner arrays in lockstep.
+    const finalRoundScores = summaryData.weightedScoresByRound.at(-1) ?? [];
+    const electedOrder = new Map(results.elected.map((c, i) => [c.id, i]));
+    const electedRank = (c: allocatedScoreCandidate) =>
+        electedOrder.has(c.id) ? (electedOrder.get(c.id) as number) : results.elected.length;
+    const permutation = summaryData.candidates
+        .map((c, oldIndex) => oldIndex)
+        .sort((a, b) => {
+            const ca = summaryData.candidates[a];
+            const cb = summaryData.candidates[b];
+            const ra = electedRank(ca);
+            const rb = electedRank(cb);
+            if (ra !== rb) return ra - rb;
+            return (finalRoundScores[b] ?? 0) - (finalRoundScores[a] ?? 0);
+        });
+    summaryData.candidates = permutation.map(i => summaryData.candidates[i]);
+    summaryData.weightedScoresByRound = summaryData.weightedScoresByRound.map(
+        round => permutation.map(i => round[i])
+    );
 
     return results
 }
@@ -239,7 +275,7 @@ function indexOfMax(arr: typeof Fraction[], candidates: candidate[]) {
         }
     }
     if (ties.length > 1) {
-        maxIndex = candidates.indexOf(ties.sort((a, b) => -(a.tieBreakOrder-b.tieBreakOrder))[0]);
+        maxIndex = candidates.indexOf(sortCandidates(ties)[0]);
     }
     return { maxIndex, ties };
 }
@@ -254,6 +290,9 @@ function findSplitPoint(cand_df_sorted: winner_scores[], quota: typeof Fraction)
             return c.weighted_score;
         }
     }
+
+    // No ballots at all, so there is no score to split on.
+    if (cand_df_sorted.length === 0) return new Fraction(0);
 
     return cand_df_sorted.slice(-1)[0].weighted_score
 }

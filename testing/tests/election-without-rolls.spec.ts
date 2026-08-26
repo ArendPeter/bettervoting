@@ -124,51 +124,51 @@ test.beforeEach(async ({ context, request }) => {
 });
 
 test('vote in election restricted by account', async ({page}) => {
-    await page.goto(`/${electionId}/admin`);
+    await page.goto(`/${electionId}/admin/voters`);
     await page.getByLabel('user (login required)').click();
     await expect(page.getByLabel('user (login required)')).toBeChecked();
+    await page.getByRole('link', { name: 'Publish & Share' }).click();
+    await page.waitForURL(`**/${electionId}/admin/publish`)
     await page.getByRole('button', { name: 'Finalize Election' }).click();
     await page.getByRole('button', { name: 'Submit' }).click();
-    await page.getByRole('link', { name: 'Voting Page' }).click();
-    await page.waitForURL(`**/${electionId}/`)
+    await page.getByRole('link', { name: 'Live Ballot' }).click();
     await page.getByRole('link', { name: 'Vote', exact: true }).click();
     await page.getByLabel('I have read the instructions').check();
-    await page.getByRole('button', { name: 'Score Candidate 1 0' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 2 1' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 3 2' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 4 3' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 5 4' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 6 5' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 1 0' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 2 1' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 3 2' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 4 3' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 5 4' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 6 5' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByLabel('I have read the instructions').check();
-    await page.getByRole('button', { name: 'Rank Candidate 10 1' }).click();
-    await page.getByRole('button', { name: 'Rank Candidate 8 2' }).click();
-    await page.getByRole('button', { name: 'Rank Candidate 9 4' }).click();
-    await page.getByRole('button', { name: 'Rank Candidate 6 4' }).click();
+    await page.getByRole('radio', { name: 'Rank Candidate 10 1' }).click();
+    await page.getByRole('radio', { name: 'Rank Candidate 8 2' }).click();
+    await page.getByRole('radio', { name: 'Rank Candidate 9 4' }).click();
+    await page.getByRole('radio', { name: 'Rank Candidate 6 4' }).click();
 
     await expect(page.getByLabel('Warning: Skipped Column')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Rank Candidate 6 4' })).toHaveClass(/alert/);
-    await expect(page.getByRole('button', { name: 'Rank Candidate 9 4' })).toHaveClass(/alert/);
+    await expect(page.getByRole('radio', { name: 'Rank Candidate 6 4' })).toHaveClass(/alert/);
+    await expect(page.getByRole('radio', { name: 'Rank Candidate 9 4' })).toHaveClass(/alert/);
     await expect(page.getByText('Do not skip rankings. Rank')).toBeVisible();
     await expect(page.getByText('Do not rank multiple')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Rank Candidate 9 3' }).click();
-    await page.getByRole('button', { name: 'Rank Candidate 6 5' }).click();
-    await page.getByRole('button', { name: 'Rank Candidate 3 6' }).click();
-    await page.getByRole('button', { name: 'Rank Candidate 7 4' }).click();
+    await page.getByRole('radio', { name: 'Rank Candidate 9 3' }).click();
+    await page.getByRole('radio', { name: 'Rank Candidate 6 5' }).click();
+    await page.getByRole('radio', { name: 'Rank Candidate 3 6' }).click();
+    await page.getByRole('radio', { name: 'Rank Candidate 7 4' }).click();
     await page.getByRole('button', { name: 'Submit' }).click();
     await page.getByRole('button', { name: 'Submit' }).click();
     await expect(page.getByRole('heading', { name: 'Ballot Submitted' })).toBeVisible();
     await page.waitForTimeout(1000);
-    await page.getByRole('link', { name: 'Voting Page' }).click();
-    await page.waitForURL(`**/${electionId}/`)
+    await page.getByRole('link', { name: 'Live Ballot' }).click();
     await expect(page.getByRole('heading', { name: 'Ballot Submitted' })).toBeVisible();
     await expect(page.locator('#root')).toContainText('Ballot Submitted');
     await page.getByRole('button', { name: 'Hello, Test' }).click();
     await page.getByRole('menuitem', { name: 'Logout' }).click();
     await page.goto(`/${electionId}/vote`);
     await page.getByLabel('I have read the instructions').check();
-    await page.getByRole('button', { name: 'Score Candidate 1 0' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 1 0' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByLabel('I have read the instructions').check();
     await page.getByRole('button', { name: 'Submit' }).click();
@@ -185,12 +185,12 @@ test('vote in election restricted by account', async ({page}) => {
     await page.goto(`/${electionId}/vote`);
     await page.getByLabel('I have read the instructions').check();
 
-    await page.getByRole('button', { name: 'Score Candidate 1 0' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 2 1' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 3 2' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 4 3' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 5 4' }).click();
-    await page.getByRole('button', { name: 'Score Candidate 6 5' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 1 0' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 2 1' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 3 2' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 4 3' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 5 4' }).click();
+    await page.getByRole('radio', { name: 'Score Candidate 6 5' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByLabel('I have read the instructions').check();
     await page.getByRole('button', { name: 'Submit' }).click();

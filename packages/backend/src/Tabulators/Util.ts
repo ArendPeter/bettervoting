@@ -105,7 +105,7 @@ export const makeAbstentionTest = (markAllEqualAsAbstention:boolean = false) => 
 
 type StatTestPair = Readonly<[string, (vote: rawVote) => boolean]>;
 
-const filterInitialVotes = (rawVotes: rawVote[], tests: StatTestPair[]): [vote[], {[key: string]: number}] => {
+const filterInitialVotes = (rawVotes: rawVote[], candidateIds: string[], tests: StatTestPair[]): [vote[], {[key: string]: number}] => {
 	let tallyVotes: vote[] = [];
 	let summaryStats: {[key: string]: number} = {};
 
@@ -117,7 +117,7 @@ const filterInitialVotes = (rawVotes: rawVote[], tests: StatTestPair[]): [vote[]
   rawVotes.forEach(rawVote => {
     // using a classic loop so that I can return out of it
     for(let i = 0; i < tests.length; i++){
-      let [statName, statTest] = tests[i]; 
+      let [statName, statTest] = tests[i];
       if(statTest(rawVote)){
         summaryStats[statName] = (summaryStats[statName] ?? 0)+1;
         return;
@@ -126,7 +126,7 @@ const filterInitialVotes = (rawVotes: rawVote[], tests: StatTestPair[]): [vote[]
     summaryStats.nTallyVotes++;
     tallyVotes.push({
       ...rawVote,
-      marks: Object.fromEntries(Object.entries(rawVote.marks).map(([c, v]) => [c, v ?? 0]))
+      marks: Object.fromEntries(candidateIds.map(id => [id, rawVote.marks[id] ?? 0]))
     })
   })
 
@@ -135,53 +135,34 @@ const filterInitialVotes = (rawVotes: rawVote[], tests: StatTestPair[]): [vote[]
 
 export type CandidateSortField<CandidateType extends candidate> = keyof CandidateType
 
-export const shuffleCandidates = <CandidateType extends candidate>(candidates: CandidateType[], nTallyVotes: number): CandidateType[] => {
-  // TODO: this will be replaced by tinyrand as described at https://discuss.python.org/t/finding-a-bloc-star-provider/73918/45
-
-  // https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
-  function shuffle(array: any[]) {
-    let seed = nTallyVotes;
-
-    // https://stackoverflow.com/a/19303725
-    function random() {
-        let x = Math.sin(seed++) * 10000;
-        return x - Math.floor(x);
-    }
-
-    let currentIndex = array.length;
-
-    // While there remain elements to shuffle...
-    while (currentIndex != 0) {
-
-      // Pick a remaining element...
-      let randomIndex = Math.floor(random() * currentIndex);
-      currentIndex--;
-
-      // And swap it with the current element.
-      [array[currentIndex], array[randomIndex]] = [
-        array[randomIndex], array[currentIndex]];
-    }
-
-    return array;
-  }
-
-  return shuffle(candidates);
-}
-
 export const sortCandidates = <CandidateType extends candidate>(
   candidates: CandidateType[],
-  fieldsExpr: CandidateSortField<CandidateType>[] | CandidateSortField<CandidateType> | undefined,
+  fieldsExpr?: CandidateSortField<CandidateType>[] | CandidateSortField<CandidateType> | undefined,
   roundResults?: roundResults<CandidateType>[]
 ) => {
-  if(fieldsExpr === undefined) return;
-  const fields = Array.isArray(fieldsExpr) ? fieldsExpr : [fieldsExpr];
+  const fields = 
+    Array.isArray(fieldsExpr) ? fieldsExpr :
+    (fieldsExpr === undefined ? [] :[fieldsExpr]);
+
+  if(!fields.includes('tieBreakOrder')) fields.push('tieBreakOrder' as CandidateSortField<CandidateType>);
 
   const evalField = (candidate: CandidateType, field: CandidateSortField<CandidateType>, subIndex?: number) => {
+    const tryInversion = (fieldValue: number | typeof Fraction) => {
+      // fields that should be sorted in reverse order (lower is better, not higher)
+      const invertedFields: CandidateSortField<CandidateType>[] = ['tieBreakOrder']; 
+      const multiplier = invertedFields.includes(field) ? -1 : 1;
+      if(typeof fieldValue == typeof Fraction){
+        return fieldValue.mul(multiplier);
+      }else{
+        return fieldValue * multiplier;
+      }
+    }
     if(Array.isArray(candidate[field])){
       // @ts-ignore: typescript doesn't know candidate[field] is an array
-      return candidate[field].at(subIndex ?? -1)
+      return tryInversion(candidate[field].at(subIndex ?? -1))
     }else{
-      return candidate[field]
+      // @ts-ignore: we know that candidate[field] is a number or Fraction, even if typescript doesn't
+      return tryInversion(candidate[field]);
     }
   }
 
@@ -190,6 +171,7 @@ export const sortCandidates = <CandidateType extends candidate>(
     let aa = evalField(a, fields[fieldIndex], subIndex);
     let bb = evalField(b, fields[fieldIndex], subIndex);
     if(typeof aa == typeof Fraction){
+      // @ts-ignore: typescript doesn't know aa is an Fraction
       let diff = aa.sub(bb).mul(-1);
       if(!diff.equals(0)) return diff.valueOf();
     }else{
@@ -217,6 +199,9 @@ export const sortCandidates = <CandidateType extends candidate>(
     if(wDiff != 0) return wDiff;
     return cmpr(a, b);
   });
+
+  // NOTE: candidates is sorted in place, but we also return the array for convenience
+  return candidates; 
 }
 
 export const getSummaryData = <CandidateType extends candidate, SummaryType extends genericSummaryData<CandidateType>,>(
@@ -227,7 +212,7 @@ export const getSummaryData = <CandidateType extends candidate, SummaryType exte
   statTests: StatTestPair[],
 ): {tallyVotes: vote[], summaryData: SummaryType} => {
 	// Filter Ballots
-	const [tallyVotes, summaryStats] = filterInitialVotes(allVotes, statTests);
+	const [tallyVotes, summaryStats] = filterInitialVotes(allVotes, candidates.map(c => c.id), statTests);
 
   // Matrix for voter preferences
   const remapZero = (n:number) => n == 0 ? Infinity : n;

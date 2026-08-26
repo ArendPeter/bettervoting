@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import { Accordion, AccordionDetails, AccordionSummary, Box, IconButton, Link, MenuItem } from '@mui/material';
@@ -10,20 +10,34 @@ import useFeatureFlags from './FeatureFlagContextProvider';
 import { openFeedback, scrollToElement, useSubstitutedTranslation } from './util';
 import { makeID, ID_PREFIXES, ID_LENGTHS } from '@equal-vote/star-vote-shared/utils/makeID';
 
-import { ReturnToClassicContext } from './ReturnToClassicDialog';
+
 import { useCookie } from '~/hooks/useCookie';
 import NavMenu from './NavMenu';
 import { PrimaryButton } from './styles';
 import { useLocation } from 'react-router-dom'
 
 export const createWizardNav = (heading: string, isLandingPage: boolean) => {
-    return isLandingPage ? 
+    return isLandingPage ?
         {
             text: heading,
-            onClick: () => scrollToElement(document.querySelector(`.wizard`)),
+            // cancelOnUserInput so the delayed scroll can't kick in mid-interaction
+            // if something else gets clicked before it starts
+            onClick: () => scrollToElement(document.querySelector(`.wizard`), { cancelOnUserInput: true }),
         } : {
             text: heading,
-            href: '/#wizard',
+            href: '/new_election',
+            target: '_self',
+        }
+};
+
+export const createFeatureListNav = (isLandingPage: boolean) => {
+    return isLandingPage ?
+        {
+            text: 'Feature List',
+            onClick: () => scrollToElement(document.querySelector(`.features`), { cancelOnUserInput: true }),
+        } : {
+            text: 'Feature List',
+            href: '/features',
             target: '_self',
         }
 };
@@ -46,8 +60,34 @@ const Header = () => {
     const navItems = [
         {
             text: t('nav.about'),
-            href: '/about',
-            target: '_self',
+            items: [
+                {
+                    text: 'About BetterVoting',
+                    href: '/about',
+                    target: '_self',
+                },
+                {
+                    text: 'About The Equal Vote Coalition',
+                    href: 'http://equal.vote/',
+                    target: '_self',
+                },
+                {
+                    text: 'Why We Need Better Voting',
+                    href: 'https://www.equal.vote/voting_methods',
+                    target: '_self',
+                },
+                {
+                    text: 'Stories',
+                    href: 'https://starvoting.org/case_studies',
+                    target: '_self',
+                },
+                createFeatureListNav(isLandingPage),
+                {
+                    text: 'Documentation',
+                    href: 'https://docs.bettervoting.com',
+                    target: '_self',
+                },
+            ]
         },
         {
             text: 'Voting Methods',
@@ -63,12 +103,12 @@ const Header = () => {
                     target: '_self',
                 },
                 {
-                    text: 'Approval',
+                    text: 'Approval Voting',
                     href: 'https://www.equal.vote/approval',
                     target: '_self',
                 },
                 {
-                    text: 'STAR PR',
+                    text: 'Proportional STAR Voting',
                     href: 'https://www.equal.vote/pr',
                     target: '_self',
                 },
@@ -106,14 +146,27 @@ const Header = () => {
             ]
         },
         {
-            text: 'Stories' ,
-            href: 'https://starvoting.org/case_studies',
-            target: '_self',
+            text: 'Support Us',
+            items: [
+                {
+                    text: 'Volunteer',
+                    href: '/volunteer',
+                    target: '_self',
+                },
+                {
+                    text: 'Merch',
+                    href: 'https://bettervoting.myspreadshop.com',
+                    target: '_self',
+                },
+                {
+                    text: 'Donate',
+                    href: 'https://equal.vote/donate',
+                    target: '_self',
+                },
+            ]
         },
         createWizardNav('Create Election', isLandingPage),
     ] as any[];
-
-    const returnToClassicContext = useContext(ReturnToClassicContext);
 
     return (
         <AppBar className="navbar" position="sticky" sx={{ backgroundColor: /*"darkShade.main"*/"black", '@media print': {display: 'none', boxShadow: 'none'}}}>
@@ -154,9 +207,7 @@ const Header = () => {
                         <MenuItem onClick={openFeedback}>
                             {t('nav.feedback')}
                         </MenuItem>
-                        <MenuItem onClick={returnToClassicContext.openDialog}>
-                            {t('return_to_classic.button')}
-                        </MenuItem>
+
                     </NavMenu>
                 </Box>
 
@@ -203,12 +254,12 @@ const Header = () => {
                                 {t('nav.your_account')}
                             </MenuItem>
                             {isLandingPage && 
-                            <MenuItem component={Link} onClick={() => scrollToElement(document.querySelector(`.wizard`))}>
+                            <MenuItem component={Link} onClick={() => scrollToElement(document.querySelector(`.wizard`), { cancelOnUserInput: true })}>
                                 {t('nav.new_election')}
                             </MenuItem>
                             }
                             {!isLandingPage && 
-                            <MenuItem component={Link} href="/#wizard">
+                            <MenuItem component={Link} href="/new_election">
                                 {t('nav.new_election')}
                             </MenuItem>
                             }
@@ -217,13 +268,6 @@ const Header = () => {
                             </MenuItem>
                             <MenuItem component={Link} href='/vote_history'>
                                 {t('nav.past_elections')}
-                            </MenuItem>
-                            <MenuItem
-                                component={Link} 
-                                href='https://docs.bettervoting.com'
-                                target='_blank'
-                            >
-                                {t('nav.help')}
                             </MenuItem>
                             <MenuItem
                                 color='inherit'

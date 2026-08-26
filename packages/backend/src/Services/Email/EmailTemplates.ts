@@ -4,6 +4,7 @@ import { ElectionRoll } from "@equal-vote/star-vote-shared/domain_model/Election
 import { Imsg } from "./IEmail"
 import { DateTime } from 'luxon'
 import { formatMarkdown, makeButton } from "@equal-vote/star-vote-shared/utils/formatMarkdown";
+import sanitizeHtml from 'sanitize-html';
 
 const emailSettings: Partial<Imsg> = {
     asm: process.env.SENDGRID_GROUP_ID ? {
@@ -17,14 +18,14 @@ const emailSettings: Partial<Imsg> = {
 }
 
 const formatTime = (time: string | Date, tz: string) => DateTime.fromJSDate(new Date(time)).setZone(tz).toLocaleString(DateTime.DATETIME_FULL);
-
+const sanitizeText = (text: string) => text ? sanitizeHtml(text, { allowedTags: [], allowedAttributes: {} }) : text;
 
 export function makeEmails(election: Election, voters: ElectionRoll[], url: string, email_subject: string, email_body: string, test_email: boolean): Imsg[] {
     const processEmailBody = (body: string, voter_id: string) => {
         return formatMarkdown(body, {
             allowButtons: true,
             buttonContext: {
-                voteUrl: `${url}/${election.election_id}/${election.settings.voter_authentication.voter_id === true && 'id/' + voter_id}`,
+                voteUrl: `${url}/${election.election_id}${election.settings.voter_authentication.voter_id ? '/id/' + voter_id : ''}`,
                 electionHomeUrl: `${url}/${election.election_id}`
             }
         });
@@ -52,7 +53,7 @@ export function Invites(election: Election, voters: ElectionRoll[], url: string,
         html: emailTemplate(`
           ${election.state === 'draft' ? `<h3>⚠️This ${election.settings.term_type} is still in test mode. All ballots during test mode will be removed once the election is finalized, and at that time you will need to vote again.⚠️</h3>` : ''}
           ${email_body ? formatMarkdown(email_body) : '' }
-          <p>You have been invited to vote in the \"${election.title}\" ${election.settings.term_type}.</p>
+          <p>You have been invited to vote in the \"${sanitizeText(election.title)}\" ${election.settings.term_type}.</p>
           ${election.description ?
             `<p>Election ${formatMarkdown(election.description)}<p>` : ''
           }
@@ -65,7 +66,7 @@ export function Invites(election: Election, voters: ElectionRoll[], url: string,
 
           <p>Click the button to vote:</p>
 
-          ${makeButton('Vote', `${url}/${election.election_id}/${election.settings.voter_authentication.voter_id === true && 'id/' + voter.voter_id}`)}
+          ${makeButton('Vote', `${url}/${election.election_id}${election.settings.voter_authentication.voter_id ? '/id/' + voter.voter_id : ''}`)}
 
           <p>This link is unique to you, be careful not to share this email with others</p>
         `)
@@ -99,7 +100,7 @@ export function Receipt(election: Election, email: string, ballot: Ballot, url: 
         html: emailTemplate(`
           <div> 
             ${election.state === 'draft' ? "<h3>⚠️This was cast as a test ballot. All test ballots will be removed once the election is finalized, and at that time you will need to vote again.⚠️</h3>" : ''}
-            <p>Thank you for voting in ${election.title}!<p>
+            <p>Thank you for voting in ${sanitizeText(election.title)}!<p>
             <p>You can <a clicktracking="off" href="${ballotVerifyUrl}">verify your ballot and ballot status</a> at any time.</p>
             ${election.settings.ballot_updates && roll ? `<p>While the election is still open, you can <a clicktracking="off" href="${ballotUpdateUrl}">update your ballot</a></p>.` : ''}
           </div>    

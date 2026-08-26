@@ -1,52 +1,56 @@
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router";
 import React from 'react'
-import Container from '@mui/material/Container';
 import EditElectionRoll from "./EditElectionRoll";
 import AddElectionRoll from "./AddElectionRoll";
 import PermissionHandler from "../../PermissionHandler";
-import { Typography } from "@mui/material";
+import { Box, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Radio, RadioGroup, Typography } from "@mui/material";
 import EnhancedTable, { HeadKey }  from "./../../EnhancedTable";
-import { useGetRolls, useSendEmails } from "../../../hooks/useAPI";
+import { useClearRolls, useGetRolls, useSendEmails } from "../../../hooks/useAPI";
 import useElection from "../../ElectionContextProvider";
 import useFeatureFlags from "../../FeatureFlagContextProvider";
-import { ElectionRoll } from "@equal-vote/star-vote-shared/domain_model/ElectionRoll";
+import { ElectionRollResponse } from "@equal-vote/star-vote-shared/domain_model/ElectionRoll";
+import { getVoterAuthenticationMode, setVoterAuthenticationMode, VoterAuthenticationMode } from "@equal-vote/star-vote-shared/domain_model/VoterAuthenticationMode";
 import SendEmailDialog from "./SendEmailDialog";
-import { SecondaryButton } from "~/components/styles";
-
+import { PrimaryButton, SecondaryButton } from "~/components/styles";
+import ElectionAuthForm from "~/components/ElectionForm/Details/ElectionAuthForm";
+import useConfirm from "~/components/ConfirmationDialogProvider";
+import { AdminPageNavigation } from '../Sidebar';
 
 const ViewElectionRolls = () => {
-    const { election, permissions } = useElection()
+    const { election, permissions, t, updateElection } = useElection()
     const { data, isPending, makeRequest: fetchRolls } = useGetRolls(election.election_id)
     const sendEmails = useSendEmails(election.election_id)
-    useEffect(() => { fetchRolls() }, [])
-    const [isEditing, setIsEditing] = useState(false)
+    const clearRolls = useClearRolls(election.election_id)
+    useEffect(() => {
+        if(election.settings.voter_access == 'closed')  fetchRolls()
+    }, [])
+    const [inspectingVoter, setInspectingVoter] = useState(false)
     const [addRollPage, setAddRollPage] = useState(false)
-    const [editedRoll, setEditedRoll] = useState<ElectionRoll|null>(null)
+    const [editedRoll, setEditedRoll] = useState<ElectionRollResponse|null>(null)
     const flags = useFeatureFlags();
     const navigate = useNavigate();
     const location = useLocation();
     const [dialogOpen, setDialogOpen] = useState(false);
 
-    const usesVoterIdAuthentication = !!election.settings.voter_authentication?.voter_id;
+    // Radios are pure projections of the canonical mode. Each click computes the
+    // next mode and fires one updateElection — no racing useSyncedState debounces.
+    // Legacy non-canonical rows throw; treat them as "open" so the page still
+    // renders (ElectionAuthForm degrades to all-unchecked) instead of crashing.
+    let mode: VoterAuthenticationMode | null;
+    try { mode = getVoterAuthenticationMode(election.settings); } catch { mode = null; }
+    const voterAccess: 'open' | 'closed' = mode?.startsWith('closed') ? 'closed' : 'open';
+    const usesEmail = mode === 'closed_bv_managed_ids';
+    const writeMode = (m: Parameters<typeof setVoterAuthenticationMode>[1]) =>
+        updateElection(e => { e.settings = setVoterAuthenticationMode(e.settings, m); });
+
+    const confirm = useConfirm();
 
     const onOpen = (voter) => {
-        setIsEditing(true)
+        setInspectingVoter(true)
         setEditedRoll(voter?.raw ?? null)
         navigate(`${location.pathname}?editing=true`, { replace: false });
     }
-    const onClose = () => {
-        setIsEditing(false)
-        setAddRollPage(false)
-        setEditedRoll(null)
-        fetchRolls()
-        navigate(location.pathname, { replace: false });
-    }
-    useEffect(() => {
-        if (!location.search.includes('editing=true') && isEditing) {
-            onClose();
-        }
-    }, [location.search])
 
     const onSendEmails = ({
         subject,
@@ -71,7 +75,7 @@ const ViewElectionRolls = () => {
             if (!currentRoll) return null;
             // When voter IDs are redacted (email list elections), always match by email
             const voterIdsAreRedacted = election.settings.invitation === 'email';
-            const useEmail = voterIdsAreRedacted || !usesVoterIdAuthentication;
+            const useEmail = voterIdsAreRedacted || !election.settings.voter_authentication?.voter_id
             const identifier = useEmail ? currentRoll.email : currentRoll.voter_id;
             if (!identifier) return null;
             return results.electionRoll.find(roll =>
@@ -80,58 +84,147 @@ const ViewElectionRolls = () => {
         })
     }
 
-    const headKeys:HeadKey[] = (election.settings.invitation === 'email')?
-        ['email', /*'invite_status', */'has_voted']
-    :
-        ['email', 'has_voted'];
+    const headKeys:HeadKey[] = ['email', 'has_voted'];
 
     if (flags.isSet('PRECINCTS')) headKeys.push('precinct');
 
-    // HACK to detect if they used email
-    if(data && data.electionRoll && data.electionRoll.length > 0 && !data.electionRoll[0].email) headKeys.unshift('voter_id')
+    if(!usesEmail) headKeys.unshift('voter_id')
 
     const electionRollData = React.useMemo(
         () => data?.electionRoll ? [...data.electionRoll] : [],
         [data]
     );
 
+    // Adding the first voter locks the voter auth radios above. While the election is still a
+    // draft that lock is undoable: clearing the roll empties it and re-enables the radios.
+    const canClearRolls = election.state === 'draft' && electionRollData.length > 0;
+
+    const onClearRolls = async () => {
+        if (!await confirm(t('admin_home.clear_voter_roll_confirm', { voter_count: electionRollData.length }))) return;
+        if (!await clearRolls.makeRequest()) return;
+        await fetchRolls();
+    }
+
     return (
-        <Container>
-            <Typography align='center' gutterBottom variant="h4" component="h4">
-                {election.title}
-            </Typography>
-            {!isEditing && !addRollPage &&
-                <>
-                    {election.settings.voter_access === 'closed' &&
-                        <PermissionHandler permissions={permissions} requiredPermission={'canAddToElectionRoll'}>
-                            <SecondaryButton onClick={() => setAddRollPage(true)} > Add Voters </SecondaryButton>
-                        </PermissionHandler>
-                    }
-                    {election.settings.invitation === 'email' &&
-                        <SecondaryButton onClick={() => setDialogOpen(true)} sx={{ml: 2}}>Draft Email Blast </SecondaryButton>
-                    }
-                    <EnhancedTable
-                        headKeys={headKeys}
-                        data={electionRollData}
-                        isPending={isPending && data?.electionRoll !== undefined}
-                        pendingMessage='Loading Voters...'
-                        defaultSortBy={headKeys[0]}
-                        title="Voters"
-                        handleOnClick={(voter) => onOpen(voter)}
-                        emptyContent={<p>This election doesn&apos;t have any voters yet</p>}
-                    />
-                </>
-            }
-            {
-                isEditing && editedRoll &&
-                <EditElectionRoll roll={editedRoll} onClose={onClose} fetchRolls={onUpdate}/>
-            }
-            {
-                addRollPage &&
-                <AddElectionRoll onClose={onClose} />
-            }
-            <SendEmailDialog electionRoll={data?.electionRoll} open={dialogOpen} onClose={() => setDialogOpen(false)} onSubmit={onSendEmails}/>
-        </Container >
+        <>
+            <Box>
+                <Typography>
+                    {t('wizard.restricted_question')}
+                </Typography>
+
+                <RadioGroup row>
+                    {[true, false].map((restricted) =>
+                        <FormControlLabel
+                            key={`${restricted}`}
+                            value={restricted}
+                            control={<Radio/>}
+                            disabled={election.state !== 'draft' || electionRollData.length > 0}
+                            label={t(`keyword.${restricted ? 'yes' : 'no'}`)}
+                            onClick={async () => {
+                                if(election.state !== 'draft' || electionRollData.length > 0) return; // not sure why disabled still allows me to do onclick
+
+                                writeMode(restricted ? 'closed_bv_managed_ids' : 'open_unique_cookie');
+                            }}
+                            checked={voterAccess === (restricted ? 'closed' : 'open')}
+                        />
+                    )}
+                </RadioGroup>
+            </Box>
+            {voterAccess == 'closed' && <Box>
+                <Typography>
+                    How would you like to identify your voters?
+                </Typography>
+
+                <RadioGroup row>
+                    {[true, false].map((email) =>
+                        <FormControlLabel
+                            key={`${email}`}
+                            value={email}
+                            control={<Radio />}
+                            disabled={election.state !== 'draft' || electionRollData.length > 0}
+                            label={t(`wizard.${email ? 'email_list' : 'id_list'}_title_with_tip`)}
+                            onClick={async () => {
+                                if(election.state !== 'draft' || electionRollData.length > 0) return; // not sure why disabled still allows me to do onclick
+
+                                writeMode(email ? 'closed_bv_managed_ids' : 'closed_admin_managed_ids');
+                            }}
+                            checked={usesEmail === email}
+                        />
+                    )}
+                </RadioGroup>
+            </Box>}
+            {voterAccess == 'open' && <ElectionAuthForm />}
+            {voterAccess == 'closed' && <>
+                {!inspectingVoter && !addRollPage &&
+                    <Box>
+                        {voterAccess === 'closed' &&
+                            <PermissionHandler permissions={permissions} requiredPermission={'canAddToElectionRoll'}>
+                                <SecondaryButton onClick={async () => {
+                                    if(electionRollData.length > 0 || await confirm(t('admin_home.add_first_voter_roll_confirm'))){
+                                        setAddRollPage(true)
+                                    }
+                                }} > Add Voters </SecondaryButton>
+                            </PermissionHandler>
+                        }
+                        {usesEmail &&
+                            <SecondaryButton onClick={() => setDialogOpen(true)} sx={{ml: 2}}>Draft Email Blast</SecondaryButton>
+                        }
+                        {canClearRolls &&
+                            <PermissionHandler permissions={permissions} requiredPermission={'canAddToElectionRoll'}>
+                                <SecondaryButton onClick={onClearRolls} disabled={clearRolls.isPending} sx={{ml: 2}}>
+                                    {t('admin_home.clear_voter_roll_button')}
+                                </SecondaryButton>
+                            </PermissionHandler>
+                        }
+                        <EnhancedTable
+                            headKeys={headKeys}
+                            data={electionRollData}
+                            isPending={isPending && data?.electionRoll !== undefined}
+                            pendingMessage='Loading Voters...'
+                            defaultSortBy={headKeys[0]}
+                            title="Voters"
+                            handleOnClick={(voter) => onOpen(voter)}
+                            emptyContent={<p>This election doesn&apos;t have any voters yet</p>}
+                        />
+                    </Box>
+                }
+                <Dialog
+                    open={inspectingVoter && !!editedRoll}
+                    onClose={() => setInspectingVoter(false)}
+                    fullWidth
+                    maxWidth='md'
+                >
+                    <DialogTitle sx={{m: 0}}>Inspecting Voter</DialogTitle>
+                    <DialogContent>
+                        <EditElectionRoll roll={editedRoll} fetchRolls={onUpdate}/>
+                    </DialogContent>
+                    <DialogActions>
+                        <PrimaryButton onClick={() => setInspectingVoter(false)}>
+                            {t('keyword.close')}
+                        </PrimaryButton>
+                    </DialogActions>
+                </Dialog>
+                <Dialog
+                    open={addRollPage}
+                    onClose={() => setAddRollPage(false)}
+                    fullWidth
+                    maxWidth='md'
+                >
+                    <DialogTitle sx={{m: 0}}>Adding Voters</DialogTitle>
+                    <DialogContent>
+                        <AddElectionRoll onClose={() => { setAddRollPage(false); fetchRolls(); }}/>
+                    </DialogContent>
+                    <DialogActions>
+                        <PrimaryButton onClick={() => setAddRollPage(false)}>
+                            {t('keyword.close')}
+                        </PrimaryButton>
+                    </DialogActions>
+                </Dialog>
+
+                <SendEmailDialog electionRoll={data?.electionRoll} open={dialogOpen} onClose={() => setDialogOpen(false)} onSubmit={onSendEmails}/>
+            </>}
+            <AdminPageNavigation />
+        </>
     )
 }
 

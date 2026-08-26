@@ -2,9 +2,9 @@ import { ILoggingContext } from '../Services/Logging/ILogger';
 import Logger from '../Services/Logging/Logger';
 import { logSafeHash } from '../Services/Logging/logSafeHash';
 import { IElectionRollStore } from './IElectionRollStore';
-import { Expression, Kysely } from 'kysely'
+import { Expression, Kysely, Transaction } from 'kysely'
 import { Database } from './Database';
-import { ElectionRoll } from '@equal-vote/star-vote-shared/domain_model/ElectionRoll';
+import { ElectionRoll, NewElectionRoll } from '@equal-vote/star-vote-shared/domain_model/ElectionRoll';
 const tableName = 'electionRollDB';
 
 export default class ElectionRollDB implements IElectionRollStore {
@@ -28,18 +28,26 @@ export default class ElectionRollDB implements IElectionRollStore {
         return this._postgresClient.schema.dropTable(tableName).execute()
     }
 
-    submitElectionRoll(electionRolls: ElectionRoll[], ctx: ILoggingContext, reason: string): Promise<boolean> {
+    async submitElectionRoll(electionRolls: NewElectionRoll[], ctx: ILoggingContext, reason: string, db?: Kysely<Database> | Transaction<Database>): Promise<ElectionRoll[]> {
         Logger.debug(ctx, `${tableName}.submit`);
-        electionRolls.forEach(roll => {
-            roll.update_date = Date.now().toString()
-            roll.head = true
-            roll.create_date = new Date().toISOString()
-        })
+        // Strip legacy fields (see ElectionRoll.ts) so callers can't write them, and generate
+        // create_date / update_date / head here — this is the only place they're set on insert.
+        const sanitized = electionRolls.map(roll => {
+            const { address: _address, registration: _registration, create_date: _cd, update_date: _ud, head: _h, ...rest } = roll;
+            return {
+                ...rest,
+                update_date: Date.now().toString(),
+                head: true,
+                create_date: new Date().toISOString(),
+            };
+        });
 
-        return this._postgresClient
+        const client = db || this._postgresClient;
+        return await client
             .insertInto(tableName)
-            .values(electionRolls)
-            .execute().then((res) => { return true })
+            .values(sanitized)
+            .returningAll()
+            .execute();
     }
 
     getRollsByElectionID(election_id: string, ctx: ILoggingContext): Promise<ElectionRoll[] | null> {
@@ -149,28 +157,63 @@ export default class ElectionRollDB implements IElectionRollStore {
             }))
     }
 
-    update(election_roll: ElectionRoll, ctx: ILoggingContext, reason: string): Promise<ElectionRoll | null> {
+    async update(election_roll: NewElectionRoll, ctx: ILoggingContext, reason: string, db?: Kysely<Database> | Transaction<Database>): Promise<ElectionRoll | null> {
         Logger.debug(ctx, `${tableName}.updateRoll`);
         Logger.debug(ctx, "", election_roll)
-        election_roll.update_date = Date.now().toString()
-        election_roll.head = true
-        // Transaction to insert updated roll and set old version's head to false
-        return this._postgresClient.transaction().execute(async (trx) => {
-            await trx.updateTable(tableName)
+
+        const executeWork = async (activeDb: Kysely<Database> | Transaction<Database>) => {
+            await activeDb.updateTable(tableName)
                 .where('election_id', '=', election_roll.election_id)
                 .where('voter_id', '=', election_roll.voter_id)
                 .where('head', '=', true)
                 .set('head', false)
                 .execute()
 
-            return await trx.insertInto(tableName)
-                .values(election_roll)
+            // Strip legacy fields and any caller-supplied create_date/update_date/head — the
+            // model generates them here so the returned row is the single source of truth.
+            const { address: _address, registration: _registration, create_date: _cd, update_date: _ud, head: _h, ...rest } = election_roll;
+            const sanitizedRoll = {
+                ...rest,
+                update_date: Date.now().toString(),
+                head: true,
+                create_date: new Date().toISOString(),
+            };
+
+            return await activeDb.insertInto(tableName)
+                .values(sanitizedRoll)
                 .returningAll()
                 .executeTakeFirstOrThrow()
-        }).catch((reason: any) => {
+        };
+
+        try {
+            if (db) {
+                return await executeWork(db);
+            } else {
+                return await this._postgresClient.transaction().execute(executeWork);
+            }
+        } catch (reason: any) {
             Logger.debug(ctx, ".get null");
             return null;
-        })
+        }
+    }
+
+    // Clears the roll without destroying it: every head row for the election is demoted to
+    // head=false, so getRollsByElectionID / getByVoterID stop seeing them but the rows (and
+    // their history) survive for auditing. The partial unique index is on (election_id,
+    // voter_id) WHERE head, so the same voter_id can be re-added afterwards.
+    async archiveRollsByElectionID(election_id: string, ctx: ILoggingContext, reason: string, db?: Kysely<Database> | Transaction<Database>): Promise<number> {
+        Logger.debug(ctx, `${tableName}.archiveRollsByElectionID ${election_id}: ${reason}`);
+
+        const client = db || this._postgresClient;
+        const archived = await client
+            .updateTable(tableName)
+            .where('election_id', '=', election_id)
+            .where('head', '=', true)
+            .set('head', false)
+            .returning('voter_id')
+            .execute()
+
+        return archived.length
     }
 
     delete(election_roll: ElectionRoll, ctx: ILoggingContext, reason: string): Promise<boolean> {

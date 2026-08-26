@@ -9,17 +9,17 @@ import { useApproveRoll, useFlagRoll, useInvalidateRoll, useRevealVoterId, useSe
 import { getLocalTimeZoneShort } from "../../util";
 import useElection from "../../ElectionContextProvider";
 import useFeatureFlags from "../../FeatureFlagContextProvider";
-import { ElectionRoll } from "@equal-vote/star-vote-shared/domain_model/ElectionRoll";
+import { ElectionRollResponse } from "@equal-vote/star-vote-shared/domain_model/ElectionRoll";
 import SendEmailDialog from "./SendEmailDialog";
 import useSnackbar from "~/components/SnackbarContext";
 import { PrimaryButton, SecondaryButton } from "~/components/styles";
+import EmailEventsList from "./EmailEventsList";
 
 type Props = {
-    roll: ElectionRoll,
-    onClose: () => void,
+    roll: ElectionRollResponse,
     fetchRolls: () => Promise<void>,
   }
-const EditElectionRoll = ({ roll, onClose, fetchRolls }:Props) => {
+const EditElectionRoll = ({ roll, fetchRolls }:Props) => {
     const { t, election, permissions } = useElection()
     const flags = useFeatureFlags();
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -137,27 +137,27 @@ const EditElectionRoll = ({ roll, onClose, fetchRolls }:Props) => {
 
     return (
         <Container>
-            <Grid container direction="column" >
+            <Grid container sx={{ flexDirection: 'column' }} >
                 {(approve.isPending || flag.isPending || unflag.isPending || invalidate.isPending || revealVoterId.isPending) &&
-                    <Grid item sm={12}>
+                    <Grid size={{ sm: 12 }}>
                         <Typography align='center' gutterBottom variant="h6" component="h6">
                             Sending Request...
                         </Typography>
                     </Grid>
                 }
                 {roll.email &&
-                    <Grid item sm={12}>
+                    <Grid size={{ sm: 12 }}>
                         <Typography align='left' gutterBottom variant="h6" component="h6">
                             {`Email Address: ${roll.email}`}
                         </Typography>
                     </Grid>
                 }
-                <Grid item sm={12}>
+                <Grid size={{ sm: 12 }}>
                     <Typography align='left' gutterBottom variant="h6" component="h6">
                         {`Has Voted: ${roll.submitted.toString()}`}
                     </Typography>
                 </Grid>
-                <Grid item sm={12}>
+                <Grid size={{ sm: 12 }}>
                     <Typography align='left' gutterBottom variant="h6" component="h6">
                         {`State: ${roll.state}`}
                     </Typography>
@@ -166,21 +166,21 @@ const EditElectionRoll = ({ roll, onClose, fetchRolls }:Props) => {
                 {election.settings.invitation === 'email' && roll.email &&
                     <>
                         {roll && !(roll.email_data && roll.email_data.inviteResponse) &&
-                            <Grid item sm={12}>
+                            <Grid size={{ sm: 12 }}>
                                 <Typography align='left' gutterBottom variant="h6" component="h6">
                                     {`Email invite status: Invite not sent`}
                                 </Typography>
                             </Grid>
                         }
                         {roll && (roll.email_data && roll.email_data.inviteResponse) && (roll.email_data.inviteResponse.length > 0 && roll.email_data.inviteResponse[0].statusCode < 400) &&
-                            <Grid item sm={12}>
+                            <Grid size={{ sm: 12 }}>
                                 <Typography align='left' gutterBottom variant="h6" component="h6">
                                     {`Email invite status: Success`}
                                 </Typography>
                             </Grid>
                         }
                         {roll && (roll.email_data && roll.email_data.inviteResponse) && !(roll.email_data.inviteResponse.length > 0 && roll.email_data.inviteResponse[0].statusCode < 400) &&
-                            <Grid item sm={12}>
+                            <Grid size={{ sm: 12 }}>
                                 <Typography align='left' gutterBottom variant="h6" component="h6">
                                     {`Email invite status: Failed`}
                                 </Typography>
@@ -189,12 +189,12 @@ const EditElectionRoll = ({ roll, onClose, fetchRolls }:Props) => {
                                 </Typography>
                             </Grid>
                         }
-                        <Grid item sm={4} sx={{py:1}}>
+                        <Grid size={{ sm: 4 }} sx={{py:1}}>
                             <PermissionHandler permissions={permissions} requiredPermission={'canSendEmails'}>
                                 <SecondaryButton onClick={() => { setDialogOpen(true) }} > Draft Email </SecondaryButton>
                             </PermissionHandler>
                         </Grid>
-                        <Grid item sm={4} sx={{py:1}}>
+                        <Grid size={{ sm: 4 }} sx={{py:1}}>
                             <SecondaryButton
                                 sx={{
                                     ml: 0,
@@ -213,7 +213,7 @@ const EditElectionRoll = ({ roll, onClose, fetchRolls }:Props) => {
                             </SecondaryButton >
                         </Grid>
                         {revealedVoterId && (
-                            <Grid item sm={12} sx={{py:2}}>
+                            <Grid size={{ sm: 12 }} sx={{py:2}}>
                                 <Paper sx={{ p: 2, backgroundColor: '#fff3e0', border: '2px solid #ff9800' }}>
                                     <Typography variant="subtitle2" sx={{mb: 1, fontWeight: 'bold'}}>
                                         Unique Voting URL:
@@ -243,32 +243,35 @@ const EditElectionRoll = ({ roll, onClose, fetchRolls }:Props) => {
                     </>
                 }
                 {roll.state === 'registered' &&
-                    <Grid item sm={4} sx={{py:1}}>
+                    <Grid size={{ sm: 4 }} sx={{py:1}}>
                         <PermissionHandler permissions={permissions} requiredPermission={'canApproveElectionRoll'}>
                             <SecondaryButton onClick={() => { onApprove() }} > Approve </SecondaryButton >
                         </PermissionHandler>
                     </Grid>}
                 {flags.isSet('VOTER_FLAGGING') && <>
                     {roll.state !== 'flagged' &&
-                        <Grid item sm={4} sx={{py:1}}>
+                        <Grid size={{ sm: 4 }} sx={{py:1}}>
 
                             <PermissionHandler permissions={permissions} requiredPermission={'canFlagElectionRoll'}>
                                 <SecondaryButton onClick={() => { onFlag() }} > Flag </SecondaryButton >
                             </PermissionHandler>
                         </Grid>}
                     {roll.state === 'flagged' &&
-                        <Grid item sm={4} sx={{py:1}}>
+                        <Grid size={{ sm: 4 }} sx={{py:1}}>
                             <PermissionHandler permissions={permissions} requiredPermission={'canUnflagElectionRoll'}>
                                 <SecondaryButton onClick={() => { onUnflag() }} > Unflag </SecondaryButton >
                             </PermissionHandler>
                         </Grid>}
                     {roll.state === 'flagged' &&
-                        <Grid item sm={4} sx={{py:1}}>
+                        <Grid size={{ sm: 4 }} sx={{py:1}}>
                             <PermissionHandler permissions={permissions} requiredPermission={'canInvalidateElectionRoll'}>
                                 <SecondaryButton onClick={() => { onInvalidate() }} > Invalidate </SecondaryButton>
                             </PermissionHandler>
                         </Grid>}
                 </>}
+                {election.settings.invitation === 'email' && roll.email_events &&
+                    <EmailEventsList events={roll.email_events} />
+                }
                 {roll?.history &&
                     <TableContainer component={Paper}>
                         <Table style={{ width: '100%' }} aria-label="simple table">
@@ -291,9 +294,6 @@ const EditElectionRoll = ({ roll, onClose, fetchRolls }:Props) => {
                         </Table>
                     </TableContainer>
                 }
-                <Grid item sm={4}>
-                    <SecondaryButton onClick={() => { onClose() }} > Close </SecondaryButton>
-                </Grid>
             </Grid>
             <SendEmailDialog
                 open={dialogOpen}

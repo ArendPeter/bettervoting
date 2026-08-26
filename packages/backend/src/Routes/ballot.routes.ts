@@ -4,7 +4,8 @@ import {
     getBallotByBallotID,
     castVoteController,
     getAnonymizedBallotsByElectionID,
-    uploadBallotsController
+    uploadBallotsController,
+    getWriteInNamesController,
 } from '../Controllers/Ballot';
 import {
     getElectionByID,
@@ -241,6 +242,46 @@ ballotRouter.post('/Election/:id/vote', asyncHandler(castVoteController))
  *       404:
  *         description: Election not found */
 ballotRouter.post('/Election/:id/uploadBallots', asyncHandler(uploadBallotsController))
+
+/**
+ * @swagger
+ * /Election/{id}/getWriteIns:
+ *   get:
+ *     summary: Get write-in candidate names and counts for an election
+ *     tags: [Ballots]
+ *     security:
+ *      - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The election ID
+ *     responses:
+ *       200:
+ *         description: Write-in data per race
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 write_in_data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       race_id:
+ *                         type: string
+ *                       names:
+ *                         type: object
+ *                         additionalProperties:
+ *                           type: integer
+ *       400:
+ *         description: Ballots not found
+ *       404:
+ *         description: Election not found */
+ballotRouter.get('/Election/:id/getWriteIns', asyncHandler(getWriteInNamesController))
 
 //I don't really understand what the point of this is, but it's in the test suite so I'm including it
 ballotRouter.post('/Election/:id/ballot', asyncHandler(returnElection))

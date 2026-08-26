@@ -1,4 +1,4 @@
-import { Box, Button, Divider, FormControlLabel, Link, TextField, Typography } from "@mui/material";
+import { Box, Button, Divider, FormControlLabel, FormHelperText, Link, Switch, TextField, Typography } from "@mui/material";
 import { DateTime } from "luxon";
 import { useTranslation } from "react-i18next";
 import { SecondaryButton, Tip } from "./styles";
@@ -8,9 +8,21 @@ import { AddCircleOutlineRounded, ArrowForwardIos } from "@mui/icons-material";
 import { getEntry } from "@equal-vote/star-vote-shared/domain_model/Util";
 import { createHash } from "crypto-browserify";
 import RemoveCircleOutlineRoundedIcon from '@mui/icons-material/RemoveCircleOutlineRounded';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const rLink = /\[(.*?)\]\((.*?)\)/;
+// Holds a local copy of `value` for fast keystrokes, flushing to parent on blur.
+export const useLocalState = <T,>(value: T, onFlush: (v: T) => void): [T, (v: T) => void, () => void] => {
+    const [local, setLocal] = useState(value);
+    const localRef = useRef(local);
+    localRef.current = local;
+    useEffect(() => setLocal(value), [value]);
+    const flush = useCallback(() => {
+        if (localRef.current !== value) onFlush(localRef.current);
+    }, [value, onFlush]);
+    return [local, setLocal, flush];
+};
+
+const rLink = /\[([^\]]*?)\]\(([^)]*?)\)/;
 const rBold = /\*\*(.*?)\*\*/;
 const rTip = / !tip\((.*)\)/;
 
@@ -74,18 +86,6 @@ export function hashString(inputString: string) {
     return createHash('sha256').update(inputString).digest('hex')
 }
 
-// mapping from method frontend version to backend version
-// TODO: we need make these consistent
-export const methodValueToTextKey = {
-    STAR_PR: 'star_pr',
-    STAR: 'star',
-    RankedRobin: 'ranked_robin',
-    Approval: 'approval',
-    STV: 'stv',
-    Plurality: 'choose_one',
-    IRV: 'rcv',
-};
-
 export const formatPercent = (f: number): string => {
   if(0 < f && f < .01) return '<1%';
   return `${Math.round(100*f)}%`
@@ -94,7 +94,8 @@ export const formatPercent = (f: number): string => {
 export const MailTo = ({ children }: { children: string }) => {
   const { setSnack } = useSnackbar();
   // https://adamsilver.io/blog/the-trouble-with-mailto-email-links-and-what-to-do-instead/
-  return <span style={{ whiteSpace: 'nowrap' }}>
+  // NOTE: using nowrap on small devices can extend the copy button beyond the end fo the screen
+  return <Box component='span' sx={{ whiteSpace: {xs: 'normal', md: 'nowrap' }}}>
     <Link href={`mailto:${children}`} sx={{ color: 'var(--brand-pop)' }}>{children}</Link>
     <SecondaryButton
       onClick={() => {
@@ -108,7 +109,7 @@ export const MailTo = ({ children }: { children: string }) => {
       }}
       sx={{ minWidth: 0, ml: 1, px: 1, py: 0}}
     >Copy</SecondaryButton>
-  </span>
+  </Box>
 }
 
 interface RowButtonWithArrowProps {
@@ -179,7 +180,7 @@ export const useSubstitutedTranslation = (electionTermType = 'election', v = {})
       if (typeof value === 'string') {
         if (key == 'datetime' || key == 'datetime2' || key == 'listed_datetime') {
           values[key] = new Date(value)
-        } else if (value.length > 2) {
+        } else if (value.length > 2 && !key.startsWith('capital_')) {
           values[`capital_${key}`] = capitalize(value)
         }
       }
@@ -195,28 +196,34 @@ export const useSubstitutedTranslation = (electionTermType = 'election', v = {})
     timeZoneName: 'short', timeZone: v['time_zone'] ?? undefined
   }
 
-
   const { t, i18n } = useTranslation()
 
-  const values = processValues({
+  const methodKey = v['methodKey'] ?? 'star';
+  const timeZone = v['time_zone'] ?? undefined;
+  // v is a new object literal each render, so useMemo would always re-run.
+  // Serialize it to a string so we get a stable dep that only changes when the contents change.
+  const vKey = JSON.stringify(v);
+
+  const values = useMemo(() => processValues({
     // Ignoring "error TS2698: Spread types may only be created from object types." since we know they'll return objects
     // @ts-ignore
     ...t('keyword'),
     // @ts-ignore
     ...t(`keyword.${electionTermType}`),
     // @ts-ignore
-    ...t(`keyword.${v['methodKey'] ?? 'star'}`),
+    ...t(`keyword.${methodKey}`),
     ...v, formatParams: {
       datetime: dt,
       datetime2: dt,
       listed_datetime: {
         year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric',
-        timeZoneName: undefined, timeZone: v['time_zone'] ?? undefined
+        timeZoneName: undefined, timeZone: timeZone,
       },
     }
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [t, electionTermType, methodKey, vKey])
 
-  const applySymbols = (txt, includeTips, newWindow) => {
+  const applySymbols = (txt, v) => {
     const applyLinks = (txt) => {
       if (typeof txt !== 'string') return txt;
       const parts = txt.split(rLink)
@@ -226,7 +233,7 @@ export const useSubstitutedTranslation = (electionTermType = 'election', v = {})
         if (parts[i + 1].startsWith('mailto')) {
           return <MailTo key={`link_${i}`}>{parts[i]}</MailTo>
         } else {
-          return <a key={`link_${i}`} href={parts[i + 1]} target={newWindow ? '_blank' : '_self'} rel={newWindow ? 'noreferrer' : undefined}>{parts[i]}</a>
+          return <a key={`link_${i}`} href={parts[i + 1]} target={v['newWindow'] ? '_blank' : '_self'} rel={v['newWindow'] ? 'noreferrer' : undefined}>{parts[i]}</a>
         }
       })
     }
@@ -239,12 +246,13 @@ export const useSubstitutedTranslation = (electionTermType = 'election', v = {})
       })
     }
 
-    const applyTips = (txt, keyPrefix, includeTips) => {
+    const applyTips = (txt, keyPrefix, v) => {
       if (typeof txt !== 'string') return txt;
       return txt.split(rTip).map((str, i) => {
         if (i % 2 == 0) return str;
-        if (!includeTips) return '';
-        return <Tip key={`tip_${keyPrefix}_${i}`} name={str} />
+        if (!(v['includeTips'] ?? true)) return '';
+
+        return <Tip key={`tip_${keyPrefix}_${i}`} name={str} values={v}/>
       })
     }
 
@@ -260,7 +268,7 @@ export const useSubstitutedTranslation = (electionTermType = 'election', v = {})
     if (!rLink.test(txt) && !rTip.test(txt) && !txt.includes('\n') && !rBold.test(txt)) return txt;
 
     const output = applyLinks(txt)
-        .map((comp, i) => applyTips(comp, i, includeTips)).flat()
+        .map((comp, i) => applyTips(comp, i, v)).flat()
         .map((comp, i) => applyLineBreaks(comp, i)).flat()
         .map((comp, i) => applyBold(comp, i)).flat()
     if(output.every(item => typeof item === 'string' )){
@@ -270,21 +278,24 @@ export const useSubstitutedTranslation = (electionTermType = 'election', v = {})
     }
   }
 
-  const handleObject = (obj, includeTips=true, newWindow=false, skipProcessing=false) => {
-    if (skipProcessing) return obj;
+  const handleObject = (obj, v) => {
+    if (v['skipProcessing']) return obj;
     if (typeof obj == 'number') return obj;
-    if (typeof obj === 'string') return applySymbols(obj, includeTips, newWindow);
-    if (Array.isArray(obj)) return obj.map(o => handleObject(o, includeTips, newWindow));
+    if (typeof obj === 'string') return applySymbols(obj, v);
+    if (Array.isArray(obj)) return obj.map(o => handleObject(o, v));
 
     const newObj = {};
     Object.entries(obj).forEach(([key, value]) => {
-      newObj[key] = handleObject(value, includeTips, newWindow);
+      newObj[key] = handleObject(value, v);
     })
     return newObj;
   }
   
   return {
-    t: (key, v = {}) => handleObject(t(key, { ...values, ...processValues(v) }), v['includeTips'], v['newWindow'], v['skipProcessing']),
+    t: (key, v = {}) => {
+      v = processValues(v)
+      return handleObject(t(key, { ...values, ...v }), v)
+    },
     i18n,
   }
 }
@@ -311,11 +322,21 @@ export const openFeedback = () => {
   (button as HTMLButtonElement).click();
 };
 
+export function scrollToElement(e, opts: { behavior?: ScrollBehavior; delay?: number; cancelOnUserInput?: boolean } = {}) {
+  const { behavior = "smooth", delay = 250, cancelOnUserInput = false } = opts;
 
+  // cancelOnUserInput drops a still-pending scroll if the user interacts
+  // during the delay, so a delayed scroll never yanks the page out from
+  // under a click that happened after the triggering one
+  const userEvents: (keyof WindowEventMap)[] = ["wheel", "pointerdown", "keydown"];
+  const removeListeners = () => userEvents.forEach((ev) => window.removeEventListener(ev, cancel));
+  function cancel() {
+    clearTimeout(timer);
+    removeListeners();
+  }
 
-
-export function scrollToElement(e) {
-  setTimeout(() => {
+  const timer = setTimeout(() => {
+    removeListeners();
     // TODO: I feel like there's got to be an easier way to do this
     let openedSection = typeof e === "function" ? e() : e;
 
@@ -343,10 +364,12 @@ export function scrollToElement(e) {
     if (elemTop < windowTop || elemBottom > windowBottom) {
       window.scrollTo({
         top: elemTop - navHeight,
-        behavior: "smooth",
+        behavior,
       });
     }
-  }, 250);
+  }, delay);
+
+  if (cancelOnUserInput) userEvents.forEach((ev) => window.addEventListener(ev, cancel, { passive: true }));
 }
 
 export const epochToDateString = (e) => {
@@ -363,4 +386,54 @@ export const isValidDate = (d) => {
 
 export const getLocalTimeZoneShort = () => {
   return DateTime.local().offsetNameShort
+}
+
+export interface SwitchSettingProps {
+  label: string
+  toggled: boolean
+  onToggle: (newValue: boolean) => void
+  disabled?: boolean
+  disabledMessage?: string
+}
+
+export function SwitchSetting({ label, toggled, onToggle, disabled=false, disabledMessage }: SwitchSettingProps) {
+  return (
+    <>
+      <FormControlLabel
+        label={label}
+        labelPlacement='start'
+        control={
+          <Switch
+            checked={toggled}
+            onChange={() => onToggle(!toggled)}
+            disabled={disabled}
+            sx={{
+              padding: 0,
+              width: 42,
+              height: 26,
+              '& .MuiSwitch-switchBase': {
+                padding: 0,
+                margin: '3px',
+                color: '#fff',
+                '&.Mui-checked': {
+                  transform: 'translateX(16px)',
+                  color: '#fff',
+                  '& + .MuiSwitch-track': { opacity: 1 },
+                },
+                '&.Mui-disabled + .MuiSwitch-track': { opacity: 0.5 },
+              },
+              '& .MuiSwitch-thumb': { width: 20, height: 20 },
+              '& .MuiSwitch-track': { borderRadius: 13 },
+            }}
+          />
+        }
+        sx={{ display: 'flex', justifyContent: 'space-between', width: {xs: '100%', md: 400}, py: 0.5, mx: 0, gap: 2, opacity: disabled ? 0.5 : 1 }}
+      />
+      {disabled && disabledMessage && (
+        <FormHelperText sx={{ mb: 2, mt: 0, fontStyle: 'italic', textAlign: 'center' }}>
+          {disabledMessage}
+        </FormHelperText>
+      )}
+    </>
+  );
 }

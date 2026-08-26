@@ -1,7 +1,7 @@
 import { Ballot } from "@equal-vote/star-vote-shared/domain_model/Ballot";
 import { Uid } from "@equal-vote/star-vote-shared/domain_model/Uid";
 import { ILoggingContext } from "../../Services/Logging/ILogger";
-import { IBallotStore } from "../IBallotStore";
+import { BallotVotes, IBallotStore } from "../IBallotStore";
 
 export default class BallotsDB implements IBallotStore {
     ballots: Ballot[] = [];
@@ -9,6 +9,7 @@ export default class BallotsDB implements IBallotStore {
     constructor() {}
     submitBallot(ballot: Ballot, ctx:ILoggingContext, reason:string): Promise<Ballot> {
         var copy = JSON.parse(JSON.stringify(ballot));
+        copy.head = true; // the real store always inserts ballots as the head version
         this.ballots.push(copy);
         return Promise.resolve(JSON.parse(JSON.stringify(copy)));
     }
@@ -24,15 +25,37 @@ export default class BallotsDB implements IBallotStore {
         return Promise.resolve(JSON.parse(JSON.stringify([] as Ballot[])));
     }
 
-    getBallotsByElectionID(election_id: string, ctx:ILoggingContext): Promise<Ballot[] | null> {
+    getBallotsByElectionID(election_id: string, ctx:ILoggingContext): Promise<Ballot[]> {
         const ballots = this.ballots.filter(
             (ballot) => ballot.election_id === election_id
         );
-        if (!ballots) {
-            return Promise.resolve(null);
-        }
         var resBallots = JSON.parse(JSON.stringify(ballots));
         return Promise.resolve(resBallots);
+    }
+
+    async *streamSubmittedBallotsByElectionID(election_id: string, ctx:ILoggingContext): AsyncIterableIterator<Ballot> {
+        const ballots = this.ballots.filter(
+            (ballot) => ballot.election_id === election_id && ballot.head && ballot.status === 'submitted'
+        );
+        // Shuffle to mimic the real store's random ordering
+        for (let i = ballots.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [ballots[i], ballots[j]] = [ballots[j], ballots[i]];
+        }
+        for (const ballot of ballots) {
+            yield JSON.parse(JSON.stringify(ballot));
+        }
+    }
+
+    // mirrors getBallotsByElectionID's filter (see Ballots.ts) so tabulation
+    // sees exactly the same ballots as the old non-streaming path
+    async *streamVotesByElectionID(election_id: string, ctx:ILoggingContext): AsyncIterableIterator<BallotVotes> {
+        const ballots = this.ballots.filter(
+            (ballot) => ballot.election_id === election_id
+        );
+        for (const ballot of ballots) {
+            yield { votes: JSON.parse(JSON.stringify(ballot.votes)) };
+        }
     }
 
     getBallotByVoterID(voter_id: string, election_id: string, ctx:ILoggingContext): Promise<Ballot | undefined> {

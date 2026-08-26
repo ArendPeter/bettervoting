@@ -7,6 +7,7 @@ import { ElectionResults } from "@equal-vote/star-vote-shared/domain_model/ITabu
 import { Ballot, NewBallot, AnonymizedBallot, NewBallotWithVoterID, BallotSubmitStatus } from "@equal-vote/star-vote-shared/domain_model/Ballot";
 import { email_request_data } from "@equal-vote/star-vote-backend/src/Controllers/Election/sendEmailController"
 import { NumberObject } from "~/components/util";
+import { WriteInCandidate, WriteInData } from "@equal-vote/star-vote-shared/domain_model/WriteIn";
 
 export const useGetElection = (electionID: string | undefined) => {
     return useFetch<undefined, {
@@ -18,6 +19,22 @@ export const useGetElection = (electionID: string | undefined) => {
 
 export const useElectionExists = (electionID: string | undefined) => {
     return useFetch<undefined, { exists: boolean | string}>(`/API/Election/${electionID}/exists`, 'get')
+}
+
+export type HistoryEvent =
+    | { type: 'state_change'; timestamp: string; from: string | null; to: string }
+    | { type: 'preliminary_results_change'; timestamp: string; to: boolean }
+    | { type: 'ballots_milestone'; timestamp: string; count: number }
+    | { type: 'upload_ballots'; timestamp: string; count: number }
+    | { type: 'ballots_edited_milestone'; timestamp: string; count: number }
+    | { type: 'voter_id_revealed'; timestamp: string };
+
+export const useGetElectionHistory = (electionID: string | undefined) => {
+    return useFetch<undefined, {
+        election_id: string,
+        finalized_at: string,
+        events: HistoryEvent[]
+    }>(`/API/Election/${electionID}/history`, 'get')
 }
 
 export const useGetElections = () => {
@@ -48,7 +65,7 @@ export const useGetGlobalElectionStats = () => {
 }
 
 export const useEditElection = (election_id: string | undefined) => {
-    return useFetch<{ Election: Election }, { election: Election }>(`/API/Election/${election_id}/edit`, 'post')
+    return useFetch<{ Election: Election, expected_update_date: string }, { election: Election }>(`/API/Election/${election_id}/edit`, 'post')
 }
 
 export const useSendInvites = (electionID: string | undefined) => {
@@ -88,8 +105,8 @@ export const useGetRoll = (electionId: string, voterId) => {
 }
 
 export const usePutElectionRoles = (election_id: string) => {
-    return useFetch<{ admin_ids: string[], audit_ids: string[], credential_ids: string[] }, object>(
-        `/API/Election/${election_id}/roles/`, 
+    return useFetch<{ admin_ids: string[], audit_ids: string[], credential_ids: string[], expected_update_date: string }, object>(
+        `/API/Election/${election_id}/roles/`,
         'put',
         'Election Roles Saved!',)
 }
@@ -98,8 +115,16 @@ export const usePostRolls = (election_id: string) => {
     return useFetch<{ electionRoll: ElectionRoll[] }, object>(`/API/Election/${election_id}/rolls/`, 'post')
 }
 
+export const useClearRolls = (election_id: string) => {
+    return useFetch<undefined, { election: Election, cleared: number }>(
+        `/API/Election/${election_id}/rolls/`,
+        'delete',
+        'Voter List Cleared!',
+    )
+}
+
 export const useSetPublicResults = (election_id: string) => {
-    return useFetch<{ public_results: boolean }, { election: Election }>(`/API/Election/${election_id}/setPublicResults`, 'post')
+    return useFetch<{ public_results: boolean, expected_update_date: string }, { election: Election }>(`/API/Election/${election_id}/setPublicResults`, 'post')
 }
 
 export const useDeleteAllBallots = (election_id: string) => {
@@ -107,7 +132,7 @@ export const useDeleteAllBallots = (election_id: string) => {
 }
 
 export const useFinalizeElection = (election_id: string) => {
-    return useFetch<undefined, { election: Election }>(`/API/Election/${election_id}/finalize`, 'post')
+    return useFetch<{ expected_update_date: string }, { election: Election }>(`/API/Election/${election_id}/finalize`, 'post')
 }
 
 export const useClaimElection = (election_id: string) => {
@@ -115,11 +140,11 @@ export const useClaimElection = (election_id: string) => {
 }
 
 export const useArchiveEleciton = (election_id: string) => {
-    return useFetch<undefined, { election: Election }>(`/API/Election/${election_id}/archive`, 'post')
+    return useFetch<{ expected_update_date: string }, { election: Election }>(`/API/Election/${election_id}/archive`, 'post')
 }
 
 export const useSetOpenState = (election_id: string) => {
-    return useFetch<{ open: boolean }, { election: Election }>(`/API/Election/${election_id}/setOpenState`, 'post')
+    return useFetch<{ open: boolean, expected_update_date: string }, { election: Election }>(`/API/Election/${election_id}/setOpenState`, 'post')
 }
 
 export const useApproveRoll = (election_id: string) => {
@@ -160,6 +185,16 @@ export const usePostBallot = (election_id: string | undefined) => {
 
 export const useUploadBallots = (election_id: string | undefined) => {
     return useFetch<{ ballots: NewBallotWithVoterID[] }, {responses: BallotSubmitStatus[]}>(`/API/Election/${election_id}/uploadBallots`, 'post')
+}
+
+export const useGetWriteIns = (election_id: string) => {
+    return useFetch<undefined, { write_in_data: WriteInData[] }>(
+        `/API/Election/${election_id}/getWriteIns`, 'get')
+}
+
+export const useSetWriteInResults = (election_id: string) => {
+    return useFetch<{ write_in_results: { race_id: string, write_in_candidates: WriteInCandidate[] } }, { election: Election }>(
+        `/API/Election/${election_id}/setWriteInResults`, 'post')
 }
 
 export const useGetSandboxResults = () => {

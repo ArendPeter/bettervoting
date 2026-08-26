@@ -135,14 +135,40 @@ test.describe('Add Voters', () => {
     });
 
     test('add voters', async ({page}) => {
-
         await page.goto(`/${electionId}/admin/voters`);
         await page.getByRole('button', {name: 'Add Voters'}).click();
+        await page.getByRole('button', {name: 'Submit'}).click(); // confirm that voter list setings can be updated after the first voter
         await page.getByLabel('Voter Data').fill(voterIds.join('\n'));
         await page.getByRole('button', {name: 'Submit'}).click();
-
-
     });
+    test('clear voters to unlock the voter list settings', async ({ page, request }) => {
+        const response = await request.post(`${API_BASE_URL}/Election/${electionId}/rolls`, {
+            data: {
+                "electionRoll": voterIds.map(voter_id => ({ state: 'approved', voter_id }))
+            }
+        });
+        await expect(response).toBeOK();
+
+        await page.goto(`/${electionId}/admin/voters`);
+        await expect(page.getByText('1–5 of 5')).toBeVisible();
+
+        // adding the first voter locks the voter list settings
+        await expect(page.getByRole('radio', { name: 'Yes' })).toBeDisabled();
+
+        await page.getByRole('button', { name: 'Clear Voter List' }).click();
+        await page.getByRole('button', { name: 'Yes, clear the list' }).click();
+
+        // roll is empty and the settings unlock again
+        await expect(page.getByText("This election doesn't have any voters yet")).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Clear Voter List' })).toHaveCount(0);
+        await expect(page.getByRole('radio', { name: 'Yes' })).toBeEnabled();
+
+        // which was the point: the admin can now pick the other voter ID scheme
+        const emailList = page.getByRole('radio', { name: /BetterVoting-managed voter IDs/ });
+        await emailList.click();
+        await expect(emailList).toBeChecked();
+    });
+
     test('vote in election restricted by ID', async ({ page, request }) => {
         await page.goto(`/`);
         const response = await request.post(`${API_BASE_URL}/Election/${electionId}/rolls`, {
@@ -177,13 +203,19 @@ test.describe('Add Voters', () => {
         await page.goto(`/${electionId}/admin/voters`);
         await expect(page.getByRole('button', { name: 'Add Voters' })).toBeVisible();
         await expect(page.getByText('1–5 of 5')).toBeVisible();
-        await page.getByRole('link', { name: 'Admin Home' }).click();
-        await page.waitForURL(`**/${electionId}/admin`)
+        await page.getByRole('link', { name: 'Publish & Share' }).click();
+        await page.waitForURL(`**/${electionId}/admin/publish`)
         await page.getByRole('button', { name: 'Finalize Election' }).click();
         await page.getByRole('button', { name: 'Submit' }).click();
+        await page.getByRole('link', { name: 'Admin Home' }).click();
+        await page.waitForURL(`**/${electionId}/admin`)
         await expect(page.getByText('open')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Edit Election Details' })).toBeDisabled();
-        await expect(page.getByRole('button', { name: 'Add' })).toBeDisabled();
+        await expect(page.getByText('(no description)')).toBeVisible();
+        await expect(page.getByText('(start and end times disabled)')).toBeVisible();
+        // Race editing is on Build Ballot page
+        await page.getByRole('link', { name: 'Build Ballot' }).click();
+        await expect(page.getByRole('button', { name: 'Add Race' })).toBeDisabled();
         await page.getByRole('button', { name: 'Edit Race: Race 1' }).click();
         await expect(page.getByRole('button', { name: 'Delete Candidate Number 6' })).toBeDisabled();
         await expect(page.getByRole('button', { name: 'Drag Candidate Number 6' })).toBeDisabled();
@@ -191,20 +223,18 @@ test.describe('Add Voters', () => {
         await expect(page.getByRole('textbox', { name: 'Title' })).toBeDisabled();
         await expect(page.getByRole('textbox', { name: 'Description' })).toBeDisabled();
         await page.getByRole('button', { name: 'Close' }).click();
-        await expect(page.getByText('(no description)')).toBeVisible();
-        await expect(page.getByText('(start and end times disabled)')).toBeVisible();
-        await expect(page.getByRole('link', { name: 'View Results' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Live Results' })).toBeVisible();
+        // Share button is on Publish & Share page
+        await page.getByRole('link', { name: 'Publish & Share' }).click();
         await expect(page.getByRole('button', { name: 'Share Election' })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Make results private' })).toBeVisible();
-        await page.getByRole('link', { name: 'Voting Page' }).click();
-        await page.waitForURL(`**/${electionId}/`)
+        await page.getByRole('link', { name: 'Live Ballot' }).click();
         await page.getByLabel('Voter ID').fill(voterIds[0]);
         await page.getByRole('button', { name: 'Submit' }).click();
         await page.getByRole('link', { name: 'Vote', exact: true }).click();
         await page.getByLabel(('I have read the instructions')).click();
         let votes = makeVotes(6, 0);
         for (const vote of votes) {
-            await page.getByRole('button', { name: `Score ${vote.candidateName} ${vote.value}` }).click();
+            await page.getByRole('radio', { name: `Score ${vote.candidateName} ${vote.value}` }).click();
         }
         await page.getByRole('button', { name: 'Next' }).click();
         await page.getByLabel(('I have read the instructions')).click();
@@ -212,15 +242,14 @@ test.describe('Add Voters', () => {
         await expect(submitButton).toBeEnabled();
         votes = makeVotes(6, 1);
         for (const vote of votes) {
-            await page.getByRole('button', { name: `Rank ${vote.candidateName} ${vote.value}` }).click();
+            await page.getByRole('radio', { name: `Rank ${vote.candidateName} ${vote.value}` }).click();
         }
         await submitButton.click();
         let reponsePromise = page.waitForResponse((response) => response.url().includes(`${electionId}/vote`) && response.status() === 200);
         await page.getByRole('button', { name: 'Submit' }).click();
         let voteResponse = await reponsePromise;
         console.log(`Vote response status: ${voteResponse.status()}`);
-        await page.getByRole('link', { name: 'Voting Page' }).click();
-        await page.waitForURL(`**/${electionId}/`)
+        await page.getByRole('link', { name: 'Live Ballot' }).click();
         await page.getByLabel('Voter ID').fill(voterIds[0]);
         await page.getByRole('button', { name: 'Submit' }).click();
         await expect(page.getByRole('link', { name: 'Vote', exact: true })).not.toBeVisible();
@@ -233,13 +262,13 @@ test.describe('Add Voters', () => {
         await page.getByLabel(('I have read the instructions')).click();
         votes = makeVotes(6, 0);
         for (const vote of votes) {
-            await page.getByRole('button', { name: `Score ${vote.candidateName} ${vote.value}` }).click();
+            await page.getByRole('radio', { name: `Score ${vote.candidateName} ${vote.value}` }).click();
         }
         await page.getByRole('button', { name: 'Next' }).click();
         await page.getByLabel(('I have read the instructions')).click();
         votes = makeVotes(6, 1);
         for (const vote of votes) {
-            await page.getByRole('button', { name: `Rank ${vote.candidateName} ${vote.value}` }).click();
+            await page.getByRole('radio', { name: `Rank ${vote.candidateName} ${vote.value}` }).click();
         }
         await submitButton.click();
         //waiting for response from server before checking ballots so we don't navigate to that page too soon
@@ -248,17 +277,14 @@ test.describe('Add Voters', () => {
         voteResponse = await reponsePromise;
         console.log(`Vote response status: ${voteResponse.status()}`);
         await expect(page.getByRole('heading', { name: 'Thank you for voting!' })).toBeVisible();
+        await page.waitForTimeout(200) // give the backend a short window to process to ensure that both voters show up int he table
         await page.goto(`/${electionId}/admin/voters`)
         await page.getByRole('columnheader', { name: 'Has Voted' }).getByRole('combobox').click();
-        await page.getByRole('option', { name: 'Not Voted', exact: true }).getByRole('checkbox').click();
+        await page.getByRole('option', { name: 'Not Voted', exact: true }).getByRole('checkbox').uncheck();
         await page.locator('#menu- > .MuiBackdrop-root').click();
         await expect(page.getByText('1–2 of 2')).toBeVisible();
         await expect(page.getByRole('rowheader', { name: '1' })).toBeVisible();
         await expect(page.getByRole('rowheader', { name: '2' })).toBeVisible();
-
-
-
-
     });
 
 

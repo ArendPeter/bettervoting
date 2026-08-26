@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import Results from './Results';
 import Box from '@mui/material/Box';
-import { Typography } from "@mui/material";
+import { Divider, Typography } from "@mui/material";
 import { useSubstitutedTranslation } from '../../util';
 import { useGetResults } from '../../../hooks/useAPI';
 import useElection from '../../ElectionContextProvider';
@@ -10,22 +10,22 @@ import ShareButton from '../ShareButton';
 import { BallotDataExport } from './BallotDataExport';
 import SupportBlurb from '../SupportBlurb';
 import { Election } from '@equal-vote/star-vote-shared/domain_model/Election';
+import ElectionStateWarning from '../ElectionStateWarning';
+import { AdminPageNavigation } from '../Sidebar';
+import useFeatureFlags from '../../FeatureFlagContextProvider';
+import { SecondaryButton } from '../../styles';
 
 const ViewElectionResults = () => {
+    const flags = useFeatureFlags();
     const { election } = useElection();
     const { data, isPending, makeRequest: getResults } = useGetResults(election.election_id)
-    useEffect(() => { getResults() }, [])
+    useEffect(() => { election.settings.public_results && getResults() }, [election.settings.public_results])
     const {t} = useSubstitutedTranslation(election.settings.term_type);
 
     return (
       <>
         <DraftWarning />
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          sx={{ width: "100%", textAlign: "center" }}
-        >
+        <Box sx={{ width: "100%", textAlign: "center", display: "flex", justifyContent: "center", alignItems: "center" }}>
           <Box
             sx={{
               width: "100%",
@@ -46,15 +46,15 @@ const ViewElectionResults = () => {
               {t("results.election_title", { title: election.title })}
             </Typography>
 
-              {isPending && <div> {t("results.loading_election")} </div>}
-            {!isPending && !data && (
+            {isPending && <div> {t("results.loading_election")} </div>}
+            {!election.settings.public_results && (
               <>
                 The election admins have not released the results yet. Feel free
                 to swing back later 😊.
               </>
             )}
 
-            {data?.results.map((results, race_index) => (
+            {election.settings.public_results && data?.results.map((results, race_index) => (
                 <Results
                     key={`results-${race_index}`}
                     race={election.races[race_index]}
@@ -85,14 +85,12 @@ const ViewElectionResults = () => {
                   <Box
                     sx={{
                       width: "100%",
-                      
-                     
                       p: 0.8,
                       px: { xs: 5, sm: 1 },
                     }}
                   >
 
-                    <BallotDataExport election={election as Election}/>
+                    <BallotDataExport election={election as Election} results={data?.results}/>
                   </Box>
                 )}
 
@@ -112,6 +110,26 @@ const ViewElectionResults = () => {
                     />
                   </Box>
                 )}
+
+                {/* The /history page is live for every finalized election
+                    regardless of this flag; the flag only controls whether
+                    voters are pointed at it while we iterate on presentation. */}
+                {flags.isSet('AUDIT_LOG') && election.state !== 'draft' && (
+                  <Box
+                    sx={{
+                      width: "100%",
+                      p: 2,
+                      px: { xs: 5, sm: 1 },
+                    }}
+                  >
+                    <SecondaryButton
+                      fullWidth
+                      href={`/${election.election_id}/history`}
+                    >
+                      {t('election_history.link')}
+                    </SecondaryButton>
+                  </Box>
+                )}
               </Box>
             </Box>
             <a href="https://www.equal.vote/donate">
@@ -120,6 +138,7 @@ const ViewElectionResults = () => {
           </Box>
         </Box>
         <SupportBlurb />
+        <AdminPageNavigation />
       </>
     );
 }

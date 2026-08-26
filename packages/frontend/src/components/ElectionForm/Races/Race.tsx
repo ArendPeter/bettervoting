@@ -1,13 +1,15 @@
 import { useState } from "react"
 import Typography from '@mui/material/Typography';
-import { Box, Paper, Tooltip } from "@mui/material"
+import { Box, capitalize, Paper, Tooltip } from "@mui/material"
 import IconButton from '@mui/material/IconButton'
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import DrawIcon from '@mui/icons-material/Draw';
 import RaceForm from './RaceForm';
 import useElection from '../../ElectionContextProvider';
 import { ContentCopy } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { Race as IRace } from "@equal-vote/star-vote-shared/domain_model/Race";
 import { ID_LENGTHS, ID_PREFIXES, makeID } from "@equal-vote/star-vote-shared/utils/makeID";
 import { useDeleteAllBallots } from "~/hooks/useAPI";
@@ -22,54 +24,57 @@ interface RaceProps {
 }
 
 export default function Race({ race, race_index }: RaceProps) {
-    const { election, updateElection, refreshElection } = useElection()
+    const { election, updateElection, refreshElection, enqueueWrite, t } = useElection()
     const { makeRequest: deleteAllBallots } = useDeleteAllBallots(election.election_id);
     const confirm = useConfirm();
+    const navigate = useNavigate();
     const [open, setOpen] = useState(false);
 
     const onSave = async (editedRace) => {
-        const success = await updateElection(election => {
+        const updated = await updateElection(election => {
             election.races[race_index] = editedRace
-        }) && await deleteAllBallots()
-        if (!success) return false
-        await refreshElection()
-        return true
+        });
+        if (!updated) return false;
+        const cleared = await enqueueWrite(() => deleteAllBallots());
+        if (!cleared) return false;
+        await refreshElection();
+        return true;
     }
 
     const onDuplicate = async () => {
         const race = election.races[race_index];
-        const success = await updateElection(election => {
+        const updated = await updateElection(election => {
             election.races.push({
                 ...race,
                 title: 'Copy Of ' + race.title,
                 race_id: makeID(ID_PREFIXES.RACE, ID_LENGTHS.RACE)
             })
-        }) && deleteAllBallots()
-        if (!success) return false
-        await refreshElection()
-        return true
+        });
+        if (!updated) return false;
+        const cleared = await enqueueWrite(() => deleteAllBallots());
+        if (!cleared) return false;
+        await refreshElection();
+        return true;
     }
 
     const onDelete = async () => {
         const confirmed = await confirm({ title: 'Confirm', message: 'Are you sure?' })
-        if (!confirmed) return false
-        let success = await updateElection(election => {
+        if (!confirmed) return false;
+        const updated = await updateElection(election => {
             election.races.splice(race_index, 1)
-        })
-        success = success && await deleteAllBallots()
-        if (!success) return false
-        await refreshElection()
-        return true
+        });
+        if (!updated) return false;
+        const cleared = await enqueueWrite(() => deleteAllBallots());
+        if (!cleared) return false;
+        await refreshElection();
+        return true;
     }
 
     return (
         <Paper elevation={4} sx={{ width: '100%'}}>
-            <Box
-                sx={{ display: 'flex', bgcolor: 'background.paper', borderRadius: 10 }}
-                alignItems={'center'}
-            >
+            <Box sx={{ display: 'flex', bgcolor: 'background.paper', borderRadius: 10, alignItems: 'center' }}>
                 <Box sx={{ width: '100%', pl: 2 }}>
-                    <Typography variant="h5" component="h5">{race.title}</Typography>
+                    <Typography variant="h5" component="h5">{`${capitalize(t('race'))} #${race_index+1}: ${race.title}`} </Typography>
                 </Box>
                 <Box sx={{ flexShrink: 1, p: 1 }}>
                     <Tooltip title='Duplicate'>
@@ -81,6 +86,17 @@ export default function Race({ race, race_index }: RaceProps) {
                         </IconButton>
                     </Tooltip>
                 </Box>
+                {race.enable_write_in && (
+                    <Box sx={{ flexShrink: 1, p: 1 }}>
+                        <Tooltip title='Manage Write-Ins'>
+                            <IconButton
+                                aria-label={`Manage Write-Ins: ${race.title}`}
+                                onClick={() => navigate(`/${election.election_id}/admin/writeins/${race.race_id}`)}>
+                                <DrawIcon />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+                )}
                 <Box sx={{ flexShrink: 1, p: 1 }}>
                     <Tooltip title='Edit'>
                         <IconButton

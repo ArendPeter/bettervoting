@@ -1,7 +1,7 @@
 import { Router } from 'express';
 const electionsRouter = Router();
 
-import {    
+import {
     returnElection,
     getElectionByID,
     electionSpecificAuth,
@@ -13,6 +13,7 @@ import {
     editElection,
     editElectionRoles,
     finalizeElection,
+    getElectionHistory,
     getElectionResults,
     getElections,
     getGlobalElectionStats,
@@ -24,6 +25,7 @@ import {
     sendEmailsController,
     queryElections,
     claimElection,
+    setWriteInResults,
 } from '../Controllers/Election';
 import {upload, uploadImageController} from '../Controllers/uploadImageController';
 import asyncHandler from 'express-async-handler';
@@ -54,6 +56,35 @@ import asyncHandler from 'express-async-handler';
 */
 
 electionsRouter.get('/Election/:id', asyncHandler(returnElection));
+
+/**
+ * @swagger
+ * /Election/{id}/history:
+ *   get:
+ *     summary: Public audit log of an election since finalization
+ *     tags: [Elections]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The election ID
+ *     responses:
+ *       200:
+ *         description: |
+ *           Sequence of events that have occurred at or after the moment the
+ *           election was finalized. Event types are state_change,
+ *           preliminary_results_change, ballots_milestone, upload_ballots,
+ *           ballots_edited_milestone, and voter_id_revealed. Designed so that
+ *           close/reopen patterns, admin ballot uploads, and break-glass voter
+ *           ID reveals are publicly visible. Ballot-related events are
+ *           truncated to the UTC day and counts are reported on a milestone
+ *           ladder; no voter IDs, ballot IDs, or vote contents are returned.
+ *       404:
+ *         description: Election has not been finalized
+ */
+electionsRouter.get('/Election/:id/history', asyncHandler(getElectionHistory));
 
 /** 
  * @swagger
@@ -266,8 +297,8 @@ electionsRouter.delete('/Election/:id', asyncHandler(deleteElection))
   */
  electionsRouter.post('/QueryElections', asyncHandler(queryElections))
  
- /** 
- * 
+ /**
+ *
  * @swagger
  * /GlobalElectionStats:
  *   get:
@@ -283,10 +314,64 @@ electionsRouter.delete('/Election/:id', asyncHandler(deleteElection))
  *               properties:
  *                 elections:
  *                   type: number
- *                   description: Number of elections
+ *                   description: Total elections (legacy_elections + sum of per-method elections)
  *                 votes:
  *                   type: number
- *                   description: Number of votes
+ *                   description: Total votes cast (legacy_votes + sum of per-method votes)
+ *                 legacy_elections:
+ *                   type: number
+ *                   description: Elections imported from classic star.vote
+ *                 legacy_votes:
+ *                   type: number
+ *                   description: Votes imported from classic star.vote
+ *                 star_elections:
+ *                   type: number
+ *                   description: Elections using STAR voting
+ *                 star_votes:
+ *                   type: number
+ *                   description: Votes cast in STAR elections
+ *                 rcv_elections:
+ *                   type: number
+ *                   description: Elections using Ranked Choice Voting (IRV)
+ *                 rcv_votes:
+ *                   type: number
+ *                   description: Votes cast in RCV elections
+ *                 approval_elections:
+ *                   type: number
+ *                   description: Elections using Approval voting
+ *                 approval_votes:
+ *                   type: number
+ *                   description: Votes cast in Approval elections
+ *                 ranked_robin_elections:
+ *                   type: number
+ *                   description: Elections using Ranked Robin voting
+ *                 ranked_robin_votes:
+ *                   type: number
+ *                   description: Votes cast in Ranked Robin elections
+ *                 star_pr_elections:
+ *                   type: number
+ *                   description: Elections using STAR Proportional Representation
+ *                 star_pr_votes:
+ *                   type: number
+ *                   description: Votes cast in STAR PR elections
+ *                 choose_one_elections:
+ *                   type: number
+ *                   description: Elections using Plurality voting
+ *                 choose_one_votes:
+ *                   type: number
+ *                   description: Votes cast in Plurality elections
+ *                 stv_elections:
+ *                   type: number
+ *                   description: Elections using Single Transferable Vote
+ *                 stv_votes:
+ *                   type: number
+ *                   description: Votes cast in STV elections
+ *                 multi_method_elections:
+ *                   type: number
+ *                   description: Elections with races using multiple different voting methods
+ *                 multi_method_votes:
+ *                   type: number
+ *                   description: Votes cast in multi-method elections
  *  */
  electionsRouter.get('/GlobalElectionStats', asyncHandler(getGlobalElectionStats))
 /** 
@@ -724,6 +809,67 @@ electionsRouter.post('/Election/:id/sendInvite/:voter_id', asyncHandler(sendInvi
  *                     - null
  */
 electionsRouter.post('/images',upload.single("file"), asyncHandler(uploadImageController))
+
+/**
+ * @swagger
+ * /Election/{id}/setWriteInResults:
+ *   post:
+ *     summary: Set write-in candidate approvals for a race
+ *     tags: [Elections]
+ *     security:
+ *      - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The election ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *        application/json:
+ *          schema:
+ *           type: object
+ *           properties:
+ *            write_in_results:
+ *              type: object
+ *              properties:
+ *                race_id:
+ *                  type: string
+ *                write_in_candidates:
+ *                  type: array
+ *                  maxItems: 100
+ *                  items:
+ *                    type: object
+ *                    properties:
+ *                      candidate_name:
+ *                        type: string
+ *                        maxLength: 100
+ *                      approved:
+ *                        type: boolean
+ *                      aliases:
+ *                        type: array
+ *                        maxItems: 20
+ *                        items:
+ *                          type: string
+ *                          maxLength: 100
+ *     responses:
+ *       200:
+ *         description: Updated election
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 election:
+ *                   type: object
+ *                   $ref: '#/components/schemas/Election'
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Election not found */
+electionsRouter.post('/Election/:id/setWriteInResults',asyncHandler(setWriteInResults))
 
 
 electionsRouter.param('id', asyncHandler(getElectionByID))

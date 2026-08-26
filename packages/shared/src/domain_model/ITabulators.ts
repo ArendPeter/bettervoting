@@ -32,7 +32,7 @@ export type ElectionResults =
     starResults |
     allocatedScoreResults |
     approvalResults |
-    rankedRobinResults | 
+    rankedRobinResults |
     irvResults |
     pluralityResults;
 
@@ -79,6 +79,11 @@ export interface genericResults<CandidateType extends candidate, SummaryType ext
     roundResults: roundResults<CandidateType>[],
     summaryData: SummaryType,
     tieBreakType: tieBreakType,
+    perm?: string[],
+    writeInDiagnostics?: {
+        numScoresDisregardedForUnprocessed: number,
+        numScoresDisregarded: number,
+    },
 }
 
 /////////////// STAR TYPES //////////////////
@@ -131,6 +136,10 @@ export interface allocatedScoreSummaryData extends genericSummaryData<allocatedS
     splitPoints: number[],
     spentAboves: number[],
     weight_on_splits: number[],
+    // HAZARD: weightedScoresByRound[round][i] is keyed by the candidate's
+    // position in summaryData.candidates. Reordering candidates without also
+    // permuting these inner arrays will silently misalign scores. Other
+    // tabulators avoid this by living on the candidate (see irvCandidate.hareScores).
     weightedScoresByRound: number[][]
 }
 

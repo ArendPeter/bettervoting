@@ -2,6 +2,7 @@ import Logger from "./Services/Logging/Logger";
 import BallotsDB from "./Models/Ballots";
 import ElectionsDB from "./Models/Elections";
 import ElectionRollDB from "./Models/ElectionRolls";
+import EmailEventsDB from "./Models/EmailEvents";
 import CastVoteStore from "./Models/CastVoteStore";
 import EmailService from "./Services/Email/EmailService";
 import BlobService from "./Services/Blob/BlobService";
@@ -12,6 +13,7 @@ import PGBossEventQueue from "./Services/EventQueue/PGBossEventQueue";
 import AccountService from "./Services/Account/AccountService"
 import GlobalData from "./Services/GlobalData";
 import { Kysely, PostgresDialect } from 'kysely'
+import Cursor from 'pg-cursor';
 import { Database } from "./Models/Database";
 import { SerializeParametersPlugin } from "./Models/serialize-parameters/serialize-parameters-plugin";
 
@@ -23,6 +25,7 @@ var _appInitContext = Logger.createContext("appInit");
 var _ballotsDb: IBallotStore;
 var _electionsDb: ElectionsDB;
 var _electionRollDb: ElectionRollDB;
+var _emailEventsDb: EmailEventsDB;
 var _castVoteStore: CastVoteStore;
 var _emailService: EmailService
 var _blobService: BlobService
@@ -39,7 +42,8 @@ function postgres(): any {
         _postgresClient = new Pool(connectionConfig);
 
         const dialect = new PostgresDialect({
-            pool: _postgresClient
+            pool: _postgresClient,
+            cursor: Cursor, // required for Kysely's .stream() to page rows instead of buffering them
         })
 
         _DB = new Kysely<Database>({
@@ -124,10 +128,17 @@ function electionRollDb(): ElectionRollDB {
     return _electionRollDb;
 }
 
+function emailEventsDb(): EmailEventsDB {
+    if (_emailEventsDb == null) {
+        _emailEventsDb = new EmailEventsDB(database());
+    }
+    return _emailEventsDb;
+}
+
 
 function castVoteStore(): CastVoteStore {
     if (_castVoteStore == null) {
-        _castVoteStore = new CastVoteStore(postgres());
+        _castVoteStore = new CastVoteStore(database());
     }
     return _castVoteStore;
 }
@@ -167,4 +178,4 @@ function globalData(): GlobalData {
     return _globalData;
 }
 
-export default { ballotsDb, electionsDb, electionRollDb, emailService, accountService, castVoteStore, globalData, eventQueue, database, blobService };
+export default { ballotsDb, electionsDb, electionRollDb, emailEventsDb, emailService, accountService, castVoteStore, globalData, eventQueue, database, blobService };

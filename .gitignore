@@ -11,4 +11,8 @@
 .pre-commit-config.yaml
 .idea
 .gitattributes
-.claude/
+.claude/**
+.playwright-mcp/**
+
+# Generated build artifacts
+packages/backend/src/OpenApi/swagger.json

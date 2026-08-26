@@ -16,6 +16,7 @@ import { logSafeHash } from '../../Services/Logging/logSafeHash';
 var ElectionRollModel = ServiceLocator.electionRollDb();
 var ElectionModel = ServiceLocator.electionsDb();
 var EmailService = ServiceLocator.emailService();
+var EmailEventsDB = ServiceLocator.emailEventsDb();
 const EventQueue = ServiceLocator.eventQueue();
 
 const className = "election.Controllers";
@@ -130,14 +131,15 @@ const sendEmailsController = async (req: IElectionRequest, res: Response, next: 
             }
         }
         // Update email campaign count in election db
+        const expected_update_date = election.update_date as string;
         election.settings.email_campaign_count = election.settings.email_campaign_count ? election.settings.email_campaign_count + 1 : 1
-        await ElectionModel.updateElection(election, req, 'Email Campaign')
+        await ElectionModel.updateElection(election, req, 'Email Campaign', expected_update_date)
         message_id = `campaign_${election.settings.email_campaign_count}`
     }
 
     const Jobs: email_request_event[] = []
     const reqId = req.contextId ? req.contextId : randomUUID();
-    const url = req.protocol + '://' + req.get('host')
+    const url = ServiceLocator.globalData().mainUrl;
     electionRoll.forEach(roll => {
         Jobs.push(
             {
@@ -200,6 +202,23 @@ async function handleSendEmailEvent(job: { id: string; data: email_request_event
         emailResponse = await EmailService.sendEmails(emails)
     }catch(e){
         throw new InternalServerError(`Couldn't send email: ${e}`);
+    }
+
+    // Record the sent event in the email events table
+    const xMessageId = emailResponse?.[0]?.[0]?.headers?.['x-message-id'];
+    if (xMessageId && !event.test_email) {
+        try {
+            await EmailEventsDB.insert({
+                message_id: xMessageId,
+                election_id: election.election_id,
+                voter_id: event.voter_id,
+                event_type: 'sent',
+                event_timestamp: new Date().toISOString(),
+                details: { status_code: emailResponse?.[0]?.[0]?.statusCode },
+            }, ctx);
+        } catch (err: any) {
+            Logger.error(ctx, `Could not insert email event: ${err.message}`);
+        }
     }
 
     if(event.test_email) return; // skip the database updates if it's a test email

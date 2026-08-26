@@ -2,9 +2,22 @@ import { Candidate } from "./Candidate";
 import { Uid } from "./Uid";
 import { checkForDuplicates } from "./Util";
 import { candidateValidation } from "./Candidate";
+import { WriteInCandidate } from "./WriteIn";
 
-const validVotingMethods = ['STAR', 'STAR_PR', 'Approval', 'RankedRobin', 'IRV', 'Plurality', 'STV'] as const;
+export const validVotingMethods = ['STAR', 'STAR_PR', 'Approval', 'RankedRobin', 'IRV', 'Plurality', 'STV'] as const;
 export type VotingMethod = typeof validVotingMethods[number];
+
+export const methodValueToTextKey = {
+    STAR: 'star',
+    STAR_PR: 'star_pr',
+    Approval: 'approval',
+    RankedRobin: 'ranked_robin',
+    IRV: 'rcv',
+    Plurality: 'choose_one',
+    STV: 'stv',
+} as const satisfies Record<VotingMethod, string>;
+
+export type MethodTextKey = typeof methodValueToTextKey[VotingMethod];
 export interface Race {
     race_id:        Uid; // short mnemonic for the race
     title:          string; // display caption for the race
@@ -13,6 +26,8 @@ export interface Race {
     num_winners:    number; // number of winners
     candidates:     Candidate[]; // list of candidates
     precincts?:     String[]; // list of precincts that vote in this election, if null then open to all precincts
+    enable_write_in?: boolean; //Allow voters to write in candidates
+    write_in_candidates?: WriteInCandidate[]
 }
 export function raceValidation(obj:Race):string | null {
     if (!obj.race_id || typeof obj.race_id !== 'string') {
@@ -33,7 +48,7 @@ export function raceValidation(obj:Race):string | null {
     if (obj.num_winners < 1 || obj.num_winners > 100){
         return "Invalid Number of Winners";
     }
-    if (!obj.candidates || obj.candidates.length < 2){
+    if (!obj.candidates || (!obj.enable_write_in && obj.candidates.length < 2)){
         return "Invalid Number of Candidates";
     } else {
         if (checkForDuplicates(obj.candidates.map(candidate => candidate.candidate_id))){

@@ -75,7 +75,11 @@ export function IRV_STV(candidates: candidate[], votes: rawVote[], nWinners = 1,
         quota = Math.floor(activeVotes.length/2 + 1)
     }
 
-    while (results.elected.length < nWinners) {
+    // Stop once every candidate has been eliminated. When no active votes remain
+    // nobody can reach the quota, so each round eliminates one more candidate until
+    // the pool is empty and there is nothing left to seat. STV never gets here: the
+    // branch below seats the survivors as soon as they can fill the remaining seats.
+    while (results.elected.length < nWinners && remainingCandidates.length > 0) {
 
         if (DEBUG) console.log("IRV Round");
 
@@ -91,7 +95,7 @@ export function IRV_STV(candidates: candidate[], votes: rawVote[], nWinners = 1,
         summaryData.candidates.forEach(c => {
             c.hareScores.push(addWeightedVotes(candidateVoteLists[c.id].votes))
         });
-        sortCandidates(remainingCandidates, ['hareScores', 'tieBreakOrder'])
+        sortCandidates(remainingCandidates, 'hareScores')
 
         // get max number of votes
 
@@ -107,6 +111,9 @@ export function IRV_STV(candidates: candidate[], votes: rawVote[], nWinners = 1,
         if (maxVotes.compare(quota) >= 0) {
             // candidate meets the threshold
             // add winner, remove from remaining candidates
+            if(remainingCandidates.length > 1 && maxVotes.equals(remainingCandidates[1].hareScores.at(-1) as typeof Fraction)){
+                results.tieBreakType = 'random';
+            }
             results.elected.push(topCandidate)
             roundResults.winners.push(topCandidate)
             if (DEBUG) console.log("winner", topCandidate);
@@ -139,6 +146,9 @@ export function IRV_STV(candidates: candidate[], votes: rawVote[], nWinners = 1,
         else {
             // find candidate with least votes and remove from remaining candidates
             let eliminatedCandidate = remainingCandidates.pop() as irvCandidate;
+            if(remainingCandidates.length == 1 && (eliminatedCandidate.hareScores.at(-1) as typeof Fraction).equals(remainingCandidates[0].hareScores.at(-1) as typeof Fraction)){
+                results.tieBreakType = 'random';
+            }
             let eliminatedCandidateVotes = candidateVoteLists[eliminatedCandidate.id].votes;
             candidateVoteLists[eliminatedCandidate.id].votes = []
             distributeVotes(remainingCandidates, candidateVoteLists, eliminatedCandidateVotes, results, electionSettings)
@@ -151,7 +161,7 @@ export function IRV_STV(candidates: candidate[], votes: rawVote[], nWinners = 1,
 
     // HACK: If we add an early return we might miss this logic
     results.summaryData.candidates.forEach(c => c.hareScores = c.hareScores.map(h => h.valueOf()));
-    sortCandidates(summaryData.candidates, ['hareScores', 'tieBreakOrder'], results.roundResults)
+    sortCandidates(summaryData.candidates, 'hareScores', results.roundResults)
 
     return results
 }
@@ -165,6 +175,13 @@ function addWeightedVotes(weightedVotes: weightedVote[]): typeof Fraction {
 }
 
 function distributeVotes(remainingCandidates: irvCandidate[], candidateVotes: keyedObject<candidateVoteList>, votesToDistribute: weightedVote[], results: irvResults, electionSettings?: ElectionSettings) {
+    // No candidates left to receive votes (ex. surplus redistribution after the
+    // last remaining candidate wins the final seat), so all ballots are exhausted
+    if (remainingCandidates.length === 0) {
+        votesToDistribute.splice(0, votesToDistribute.length);
+        return;
+    }
+
     // we'll remove as votes get exhausted, hence the backwards iteration
     for(let i = votesToDistribute.length-1; i >= 0; i--){
         let ballot = votesToDistribute[i];

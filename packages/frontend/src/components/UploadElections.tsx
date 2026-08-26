@@ -10,6 +10,7 @@ import { Candidate } from "@equal-vote/star-vote-shared/domain_model/Candidate";
 import { Election, NewElection } from '@equal-vote/star-vote-shared/domain_model/Election';
 import { useGetElections } from "~/hooks/useAPI";
 import { OrderedNewBallot, RaceCandidateOrder } from "@equal-vote/star-vote-shared/domain_model/Ballot";
+import { encodeOrderedVote } from "@equal-vote/star-vote-shared/domain_model/OrderedVoteCodec";
 import { inferElectionSettings } from "./ElectionSettingInference";
 import { PrimaryButton, SecondaryButton } from "./styles";
 import { makeDefaultElection } from "./ElectionForm/Wizard/Wizard";
@@ -169,7 +170,7 @@ const UploadElections = () => {
                         delete subBallot.votes;
                         return {
                             ...subBallot,
-                            orderedVotes: b.votes.map(v => [...v.scores.map(s => s.score), v.overvote_rank, v.has_duplicate_rank? 1 : 0])
+                            orderedVotes: b.votes.map(v => encodeOrderedVote(v.scores.map(s => s.score), v.overvote_rank, v.has_duplicate_rank ?? false))
                         }
                     });
 
@@ -274,14 +275,7 @@ const UploadElections = () => {
         setCvrs([...cvrs, ...new_files])
     }
 
-    return <Box
-        display='flex'
-        justifyContent="center"
-        alignItems="center"
-        flexDirection='column'
-        sx={{ width: '100%', maxWidth: 1000, margin: 'auto', mb: 1 }}
-        gap={2}
-    >
+    return <Box sx={{ width: '100%', maxWidth: 1000, margin: 'auto', mb: 1, display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column", gap: 2 }}>
         <Typography variant='h3'>Upload Election(s)</Typography>        
 
         {/* TODO: add a sys admin permission check*/ }
@@ -298,20 +292,11 @@ const UploadElections = () => {
             />
         </FormGroup>
 
-        <Box
-            display='flex'
-            flexDirection='column'
-            justifyContent='center'
-            alignItems='center'
-            border='4px dashed rgb(112,112,112)'
-            sx={{ width: '100%', m: 0, p: 2 }}
-            onDragOver={handleDragOver}
-            onDrop={handleOnDrop}
-        >
+        <Box onDragOver={handleDragOver} onDrop={handleOnDrop} sx={{ width: '100%', m: 0, p: 2, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", border: "4px dashed rgb(112,112,112)" }}>
             <Typography variant="h6" component="h6" style={{ marginTop: 0 }}>
                 Add Election CVRs
             </Typography>
-            <Box display='flex' flexDirection='row' alignItems='center'>
+            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
                 <Typography variant="h6" component="h6" sx={{ m: 0 }} style={{}} >
                     Drag and Drop or&nbsp;
                 </Typography>

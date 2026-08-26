@@ -6,7 +6,7 @@ import { Kysely, sql } from 'kysely'
 import { Election, electionValidation } from '@equal-vote/star-vote-shared/domain_model/Election';
 import { sharedConfig } from '@equal-vote/star-vote-shared/config';
 import { IElectionStore } from './IElectionStore';
-import { InternalServerError } from '@curveball/http-errors';
+import { Conflict, InternalServerError } from '@curveball/http-errors';
 import { BadRequest } from "@curveball/http-errors";
 
 const tableName = 'electionDB';
@@ -57,7 +57,7 @@ export default class ElectionsDB implements IElectionStore {
         return newElection
     }
 
-    updateElection(election: Election, ctx: ILoggingContext, reason: string): Promise<Election> {
+    async updateElection(election: Election, ctx: ILoggingContext, reason: string, expected_update_date: string): Promise<Election> {
         Logger.debug(ctx, `${tableName}.updateElection`);
         const validationFailure = electionValidation(election);
         if (validationFailure) {
@@ -66,13 +66,21 @@ export default class ElectionsDB implements IElectionStore {
         }
         election.update_date = Date.now().toString()
         election.head = true
-        // Transaction to insert updated election and set old version's head to false
-        const updatedElection = this._postgresClient.transaction().execute(async (trx) => {
-            await trx.updateTable('electionDB')
+        // Transaction: flip the current head row to non-head and insert the new version.
+        // The unique partial index on (election_id) WHERE head=true means concurrent
+        // writers would otherwise collide on insert; the expected_update_date check
+        // turns that collision into a clean Conflict for the loser.
+        const updatedElection = await this._postgresClient.transaction().execute(async (trx) => {
+            const result = await trx.updateTable('electionDB')
                 .where('election_id', '=', election.election_id)
                 .where('head', '=', true)
+                .where('update_date', '=', expected_update_date)
                 .set('head', false)
-                .execute()
+                .executeTakeFirst()
+
+            if (result.numUpdatedRows === BigInt(0)) {
+                throw new Conflict('Concurrent write detected, please try again');
+            }
 
             return await trx.insertInto('electionDB')
                 .values(election)
@@ -160,6 +168,16 @@ export default class ElectionsDB implements IElectionStore {
             .selectAll()
             .execute()
             .catch(dneCatcher);
+    }
+
+    getElectionRacesForAllElections(ctx: ILoggingContext): Promise<Pick<Election, 'election_id' | 'owner_id' | 'races'>[] | null> {
+        Logger.debug(ctx, `${tableName}.getElectionRacesForAllElections`);
+        return this._postgresClient
+            .selectFrom(tableName)
+            .select(['election_id', 'owner_id', 'races'])
+            .where('head', '=', true)
+            .execute()
+            .catch(dneCatcher) as Promise<Pick<Election, 'election_id' | 'owner_id' | 'races'>[] | null>;
     }
 
     // TODO: this function should probably be in the ballots model
