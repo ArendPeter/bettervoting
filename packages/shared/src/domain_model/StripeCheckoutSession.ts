@@ -17,7 +17,7 @@ export interface StripeCheckoutSession {
     id?: number;
     election_id: Uid;
     user_id: Uid;
-    product: StripeCheckoutSessionLineItem[];
+    line_items: StripeCheckoutSessionLineItem[];
     amount_cents: number;
     voter_count_granted?: number;
     stripe_checkout_session_id: string;
