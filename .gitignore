@@ -17,7 +17,5 @@
 # Generated build artifacts
 packages/backend/src/OpenApi/swagger.json
 
-# Husky hooks are opt-in — only the .sample files are committed. Activating a
-# hook (copying it to its real name) is a personal, local choice; see docs/adr.
-.husky/pre-commit
+# Husky's own internal state, not a hook itself
 .husky/_
