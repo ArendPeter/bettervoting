@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Git
-- Always use the full remote URL (not a remote name) when running git push (e.g. `git push https://github.com/ArendPeter/bettervoting.git <branch>`).
+- Always use the full remote URL (not a remote name) when running git push, to avoid ambiguity across multiple remotes.
 - Never push to any URL matching `github.com/Equal-Vote/*` without explicit confirmation.
 
 **Human summary on PRs**

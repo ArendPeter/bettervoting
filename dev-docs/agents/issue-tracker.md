@@ -2,7 +2,7 @@
 
 Issues and PRDs for this repo live as GitHub issues on **`Equal-Vote/bettervoting`**. Use the `gh` CLI for all operations.
 
-**Note:** this repo has two remotes — `origin` (`ArendPeter/BetterVoting`, a fork) and `upstream` (`Equal-Vote/bettervoting`, the canonical repo). `gh`'s auto-detection may resolve to the wrong one. Always pass `--repo Equal-Vote/bettervoting` explicitly on `gh issue`/`gh pr` commands.
+**Note:** contributors commonly work from a personal fork remote alongside `upstream` (`Equal-Vote/bettervoting`, the canonical repo) — remote names and fork ownership vary by dev environment. `gh`'s auto-detection may resolve to the wrong one. Always pass `--repo Equal-Vote/bettervoting` explicitly on `gh issue`/`gh pr` commands.
 
 ## Conventions
 
