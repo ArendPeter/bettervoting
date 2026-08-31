@@ -47,7 +47,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-<<<<<<< HEAD
+    "@eslint/js": "^9.39.5",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.2",
     "@types/cors": "^2.8.12",
@@ -56,10 +56,6 @@
     "@types/luxon": "^3.3.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.10.2",
-=======
-    "@eslint/js": "^9.39.5",
-    "@types/compression": "^1.8.1",
->>>>>>> 54abbefd (Add phased lint/a11y/security linting, opt-in Husky hooks, and secret scanning)
     "@types/pg-cursor": "^2.7.2",
     "@types/sanitize-html": "^2.13.0",
     "@types/supertest": "^2.0.12",
