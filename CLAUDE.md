@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Git
-- Always use the full remote URL (not a remote name) when running git push (e.g. `git push https://github.com/ArendPeter/bettervoting.git <branch>`).
+- Always use the full remote URL (not a remote name) when running git push, to avoid ambiguity across multiple remotes.
 - Never push to any URL matching `github.com/Equal-Vote/*` without explicit confirmation.
 
 **Human summary on PRs**
@@ -138,3 +138,17 @@ For i18n labels with `!tip()` syntax, match a substring: `{ name: /Set Number Of
 - `DEV_DATABASE` — Set to `FALSE` to disable SSL for local Postgres
 - `LOG_LEVEL` — Logging verbosity
 - `FRONTEND_URL` (testing only) — Base URL for Playwright tests
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `Equal-Vote/bettervoting` (double check the remotes, as they're named differently depending on the dev environment). See `dev-docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Only `ready-for-agent` is tracked, via the label `sandcastle`; the other four canonical roles have no corresponding label in this repo. See `dev-docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one `CONTEXT.md` + `dev-docs/adr/` at the repo root. See `dev-docs/agents/domain.md`.
