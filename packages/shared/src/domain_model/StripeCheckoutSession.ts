@@ -1,16 +1,17 @@
 import { Uid } from "./Uid";
 
-export type StripeCheckoutSessionProduct = 'voter_limit';
+export type StripeCheckoutSessionProduct = 'voter_limit_block';
 export type StripeCheckoutSessionStatus = 'pending' | 'paid';
 
-// A cart line item as submitted to Stripe Checkout Session creation — a full
-// snapshot of the Stripe price_data for that item, tagged with the internal
-// product type it corresponds to (Phase 1 only ships 'voter_limit', but a
-// single Checkout Session can carry multiple line items/products).
+// A cart line item as stored in stripeCheckoutSessionsDB — a full snapshot of
+// the Stripe price_data for that item, tagged with the internal product type.
+// Phase 1 ships only 'voter_limit_block'; extra fields (e.g. blocks) are
+// included in the snapshot via the catalog's buildLineItems output.
 export interface StripeCheckoutSessionLineItem {
-    product: StripeCheckoutSessionProduct;
+    type: StripeCheckoutSessionProduct;
     price_data: unknown;
     quantity: number;
+    blocks?: number;
 }
 
 export interface StripeCheckoutSession {

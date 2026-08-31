@@ -26,6 +26,7 @@ import {
     queryElections,
     claimElection,
     setWriteInResults,
+    createCheckoutSession,
 } from '../Controllers/Election';
 import {upload, uploadImageController} from '../Controllers/uploadImageController';
 import asyncHandler from 'express-async-handler';
@@ -871,6 +872,55 @@ electionsRouter.post('/images',upload.single("file"), asyncHandler(uploadImageCo
  *         description: Election not found */
 electionsRouter.post('/Election/:id/setWriteInResults',asyncHandler(setWriteInResults))
 
+
+/**
+ * @swagger
+ * /Election/{id}/CheckoutSession:
+ *   post:
+ *     summary: Create a Stripe Checkout Session for purchasing voter limit blocks
+ *     tags: [Elections]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The election ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: [voter_limit_block]
+ *                     quantity:
+ *                       type: number
+ *     responses:
+ *       200:
+ *         description: Stripe hosted checkout URL
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *       400:
+ *         description: Invalid cart (unknown type or voter limit would exceed 5000)
+ *       401:
+ *         description: Not authorized
+ */
+electionsRouter.post('/Election/:id/CheckoutSession', asyncHandler(createCheckoutSession))
 
 electionsRouter.param('id', asyncHandler(getElectionByID))
 electionsRouter.param('id', asyncHandler(electionSpecificAuth))
