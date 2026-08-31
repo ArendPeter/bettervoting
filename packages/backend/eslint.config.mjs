@@ -1,4 +1,4 @@
-import base from "../shared/eslint.base.mjs";
+import base from "../../eslint.base.mjs";
 import globals from "globals";
 import security from "eslint-plugin-security";
 import jest from "eslint-plugin-jest";

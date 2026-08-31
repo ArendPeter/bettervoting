@@ -1,4 +1,4 @@
-import base from "../shared/eslint.base.mjs";
+import base from "../../eslint.base.mjs";
 import globals from "globals";
 import pluginReact from "eslint-plugin-react";
 import jsxA11y from "eslint-plugin-jsx-a11y";
