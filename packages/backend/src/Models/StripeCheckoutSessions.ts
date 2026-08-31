@@ -1,6 +1,6 @@
 import { ILoggingContext } from '../Services/Logging/ILogger';
 import Logger from '../Services/Logging/Logger';
-import { Kysely } from 'kysely'
+import { ExpressionBuilder, Kysely } from 'kysely'
 import { Database } from './Database';
 import { StripeCheckoutSession } from '@equal-vote/star-vote-shared/domain_model/StripeCheckoutSession';
 
@@ -57,7 +57,7 @@ export default class StripeCheckoutSessionsDB {
         Logger.debug(ctx, `${tableName}.sumVoterLimitPurchases election_id=${election_id}`);
         const result = await this._postgresClient
             .selectFrom(tableName)
-            .select((eb) => eb.fn.sum<number>('voter_count_granted').as('total'))
+            .select((eb: ExpressionBuilder<Database, typeof tableName>) => eb.fn.sum<number>('voter_count_granted').as('total'))
             .where('election_id', '=', election_id)
             .where('status', '=', 'paid')
             .executeTakeFirst();
