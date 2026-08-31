@@ -32,6 +32,15 @@ export default class StripeCheckoutSessionsDB {
         return result ?? null;
     }
 
+    async updateStripeSessionId(placeholder_id: string, real_session_id: string, ctx: ILoggingContext): Promise<void> {
+        Logger.debug(ctx, `${tableName}.updateStripeSessionId`);
+        await this._postgresClient
+            .updateTable(tableName)
+            .set({ stripe_checkout_session_id: real_session_id })
+            .where('stripe_checkout_session_id', '=', placeholder_id)
+            .execute();
+    }
+
     async markPaid(stripe_checkout_session_id: string, ctx: ILoggingContext): Promise<void> {
         Logger.debug(ctx, `${tableName}.markPaid stripe_checkout_session_id=${stripe_checkout_session_id}`);
         await this._postgresClient

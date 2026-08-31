@@ -16,6 +16,13 @@ export default class StripeCheckoutSessionsDB {
         return this._sessions.find(s => s.stripe_checkout_session_id === stripe_checkout_session_id) ?? null;
     }
 
+    async updateStripeSessionId(placeholder_id: string, real_session_id: string, ctx: ILoggingContext): Promise<void> {
+        const session = this._sessions.find(s => s.stripe_checkout_session_id === placeholder_id);
+        if (session) {
+            session.stripe_checkout_session_id = real_session_id;
+        }
+    }
+
     async markPaid(stripe_checkout_session_id: string, ctx: ILoggingContext): Promise<void> {
         const session = this._sessions.find(s => s.stripe_checkout_session_id === stripe_checkout_session_id);
         if (session) {
