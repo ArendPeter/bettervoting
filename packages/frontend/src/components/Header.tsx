@@ -120,11 +120,6 @@ const Header = () => {
             ]
         },
         {
-            text: t('nav.public_elections'),
-            href: '/browse',
-            target: '_self',
-        },
-        {
             text: 'Paper Ballots',
             items: [
                 createWizardNav('E-Voting w/ Paper Receipts', isLandingPage),
