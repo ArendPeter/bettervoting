@@ -1,7 +1,7 @@
 import { Box, Typography } from '@mui/material'
 import FeaturedElection from './FeaturedElection'
 import { useSubstitutedTranslation } from '../util'
-import { PrimaryButton, SecondaryButton } from '../styles';
+import { PrimaryButton } from '../styles';
 
 const LandingPageFeaturedElections = ({ electionIds }: { electionIds: string[] }) => {
     const { t } = useSubstitutedTranslation();

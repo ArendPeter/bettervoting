@@ -16,6 +16,14 @@ import NavMenu from './NavMenu';
 import { PrimaryButton } from './styles';
 import { useLocation } from 'react-router-dom'
 
+type NavItem = {
+    text: string;
+    href?: string;
+    target?: string;
+    onClick?: () => void;
+    items?: NavItem[];
+};
+
 export const createWizardNav = (heading: string, isLandingPage: boolean) => {
     return isLandingPage ?
         {
@@ -53,11 +61,10 @@ const Header = () => {
     const [tempID, setTempID] = useCookie('temp_id', defaultTempId);
     useEffect(() => {
         if (tempID === '0') setTempID(makeID(ID_PREFIXES.VOTER, ID_LENGTHS.VOTER));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tempID]);
     const {t} = useSubstitutedTranslation();
     
-    const navItems = [
+    const navItems: NavItem[] = [
         {
             text: t('nav.about'),
             items: [
@@ -161,7 +168,7 @@ const Header = () => {
             ]
         },
         createWizardNav('Create Election', isLandingPage),
-    ] as any[];
+    ];
 
     return (
         <AppBar className="navbar" position="sticky" sx={{ backgroundColor: /*"darkShade.main"*/"black", '@media print': {display: 'none', boxShadow: 'none'}}}>
