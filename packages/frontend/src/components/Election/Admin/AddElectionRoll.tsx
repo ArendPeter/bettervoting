@@ -41,9 +41,14 @@ const AddElectionRoll = ({ onClose }: { onClose: () => void }) => {
     if(enablePrecinct) allowedColumns.push('precinct')
 
     const submitRolls = async (rolls) => {
-
         const newRolls = await postRoll.makeRequest({ electionRoll: rolls })
         if (!newRolls) {
+            if (postRoll.latestErrorResponse.current?.code === 'PAYMENT_REQUIRED') {
+                // TODO: open the payment/cart modal (separate frontend ticket)
+                // postRoll.latestErrorResponse.current contains currentVoterLimit,
+                // requestedVoterCount, blockSize, pricePerBlockCents
+                return;
+            }
             throw Error("Error submitting rolls");
         }
         onClose()
