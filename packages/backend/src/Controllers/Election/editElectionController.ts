@@ -33,6 +33,9 @@ const editElection = async (req: IElectionRequest, res: Response, next: NextFunc
     Logger.debug(req, `election ID = ${inputElection}`);
     var failMsg = `Failed to update election`;
 
+    // voter_limit can only be changed via the Stripe webhook fulfillment path, never by the client
+    inputElection.voter_limit = req.election.voter_limit;
+
     const expected_update_date = expectUpdateDate(req);
     const updatedElection = await ElectionsModel.updateElection(inputElection, req, `User editing draft Election`, expected_update_date);
     if (!updatedElection) {

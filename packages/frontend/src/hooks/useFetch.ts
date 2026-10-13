@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import useSnackbar from "../components/SnackbarContext";
 
-// Example usage 
+// Example usage
 // Requst type: MyRequest
 // Response type: ApiResponse
 // MyRequestHook = useFetch<MyRequest, ApiResponse>(url, 'get')
 // Where
-// MyRequestHoot type = 
+// MyRequestHoot type =
 // {
 //  data: ApiResponse | null, null by default until successful response
-//  isPending: boolean, true if waiting for request 
-//  error: any | null, null by default until request error 
+//  isPending: boolean, true if waiting for request
+//  error: any | null, null by default until request error
+//  latestErrorResponse: raw parsed JSON from the most recent failed response (synchronously readable)
 //  makeRequest: (MyRequest) => Promise<ApiResponse|false>, if request errors response with false
 // }
 const useFetch = <Message, Response>(url: string, method: 'get' | 'post' | 'put' | 'delete', successMessage: string | null = null) => {
@@ -18,6 +19,8 @@ const useFetch = <Message, Response>(url: string, method: 'get' | 'post' | 'put'
     const [error, setError] = useState<string>(null)
     const [data, setData] = useState<Response | null>(null)
     const { setSnack } = useSnackbar()
+    // Ref so callers can read the raw error body synchronously right after makeRequest returns false
+    const latestErrorResponse = useRef<Record<string, unknown> | null>(null);
 
     const makeRequest = async (data?: Message) => {
         const options: RequestInit = {
@@ -29,6 +32,7 @@ const useFetch = <Message, Response>(url: string, method: 'get' | 'post' | 'put'
             body: JSON.stringify(data),
         };
         setIsPending(true);
+        latestErrorResponse.current = null;
         try {
             const res = await fetch(url, options);
             const contentType = res.headers.get('content-type');
@@ -37,6 +41,13 @@ const useFetch = <Message, Response>(url: string, method: 'get' | 'post' | 'put'
                 data = await res.json();
             }
             if (!res.ok) {
+                latestErrorResponse.current = data ?? null;
+                // PAYMENT_REQUIRED is handled by the caller — don't show the generic snackbar
+                if (data?.code === 'PAYMENT_REQUIRED') {
+                    setIsPending(false);
+                    setError('PAYMENT_REQUIRED');
+                    return false;
+                }
                 const errorMsg = data?.error ? `: ${data.error}` : '';
                 throw Error(`Error making request: ${res.status.toString()}${errorMsg}`);
             }
@@ -64,7 +75,7 @@ const useFetch = <Message, Response>(url: string, method: 'get' | 'post' | 'put'
             return false;
         }
     }
-    return { data, isPending, error, makeRequest };
+    return { data, isPending, error, latestErrorResponse, makeRequest };
 };
 
 export default useFetch;

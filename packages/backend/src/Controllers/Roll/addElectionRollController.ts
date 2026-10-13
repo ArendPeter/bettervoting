@@ -6,7 +6,7 @@ import { expectPermission } from "../controllerUtils";
 import { BadRequest } from "@curveball/http-errors";
 import { IElectionRequest } from "../../IRequest";
 import { Response, NextFunction } from 'express';
-import { sharedConfig } from "@equal-vote/star-vote-shared/config";
+import { sharedConfig, pricingConfig } from "@equal-vote/star-vote-shared/config";
 import { makeUniqueID, ID_LENGTHS, ID_PREFIXES } from "@equal-vote/star-vote-shared/utils/makeID";
 
 interface ElectionRollInput {
@@ -83,11 +83,20 @@ const addElectionRoll = async (req: IElectionRequest & { body: { electionRoll: E
             throw new BadRequest(`Some submitted voters already exist (${duplicateRolls.length} duplicates found)`)
         }
 
-        // Check for roll limit
-        let overrides = sharedConfig.ELECTION_VOTER_LIMIT_OVERRIDES as { [key: string]: number};
-        let voterLimit = overrides[req.election.election_id] ?? sharedConfig.FREE_TIER_PRIVATE_VOTER_LIMIT;
-        if(req.election.settings.voter_access == 'closed' && existingRolls.length + req.body.electionRoll.length > voterLimit){
-            throw new BadRequest(`Request Denied: this election is limited to ${voterLimit} voters`);
+        // Check for roll limit — overrides take priority, else fall back to per-election voter_limit
+        const overrides = sharedConfig.ELECTION_VOTER_LIMIT_OVERRIDES as { [key: string]: number };
+        const voterLimit = overrides[req.election.election_id] ?? req.election.voter_limit;
+        const requestedVoterCount = existingRolls.length + req.body.electionRoll.length;
+        if (req.election.settings.voter_access == 'closed' && requestedVoterCount > voterLimit) {
+            res.status(402).json({
+                error: `Request Denied: this election is limited to ${voterLimit} voters`,
+                code: 'PAYMENT_REQUIRED',
+                currentVoterLimit: voterLimit,
+                requestedVoterCount,
+                blockSize: pricingConfig.BLOCK_SIZE,
+                pricePerBlockCents: pricingConfig.PRICE_PER_BLOCK_CENTS,
+            });
+            return;
         }
     }
 

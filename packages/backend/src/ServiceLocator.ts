@@ -3,9 +3,11 @@ import BallotsDB from "./Models/Ballots";
 import ElectionsDB from "./Models/Elections";
 import ElectionRollDB from "./Models/ElectionRolls";
 import EmailEventsDB from "./Models/EmailEvents";
+import StripeCheckoutSessionsDB from "./Models/StripeCheckoutSessions";
 import CastVoteStore from "./Models/CastVoteStore";
 import EmailService from "./Services/Email/EmailService";
 import BlobService from "./Services/Blob/BlobService";
+import StripeService from "./Services/Stripe/StripeService";
 import { IBallotStore } from "./Models/IBallotStore";
 import { IEventQueue } from "./Services/EventQueue/IEventQueue";
 import PGBossEventQueue from "./Services/EventQueue/PGBossEventQueue";
@@ -26,9 +28,11 @@ var _ballotsDb: IBallotStore;
 var _electionsDb: ElectionsDB;
 var _electionRollDb: ElectionRollDB;
 var _emailEventsDb: EmailEventsDB;
+var _stripeCheckoutSessionsDb: StripeCheckoutSessionsDB;
 var _castVoteStore: CastVoteStore;
 var _emailService: EmailService
 var _blobService: BlobService
+var _stripeService: StripeService;
 var _eventQueue: IEventQueue;
 var _accountService: AccountService;
 var _globalData: GlobalData;
@@ -135,6 +139,13 @@ function emailEventsDb(): EmailEventsDB {
     return _emailEventsDb;
 }
 
+function stripeCheckoutSessionsDb(): StripeCheckoutSessionsDB {
+    if (_stripeCheckoutSessionsDb == null) {
+        _stripeCheckoutSessionsDb = new StripeCheckoutSessionsDB(database());
+    }
+    return _stripeCheckoutSessionsDb;
+}
+
 
 function castVoteStore(): CastVoteStore {
     if (_castVoteStore == null) {
@@ -164,6 +175,19 @@ function blobService(): BlobService {
     return _blobService ;
 }
 
+function stripeService(): StripeService {
+    if (_stripeService == null) {
+        if (process.env.STRIPE_SECRET_KEY) {
+            _stripeService = new StripeService();
+        } else {
+            Logger.info({}, 'STRIPE_SECRET_KEY is not set. Using mock StripeService.');
+            const MockStripeService = require("./Services/Stripe/__mocks__/StripeService").default;
+            _stripeService = new MockStripeService();
+        }
+    }
+    return _stripeService;
+}
+
 function accountService(): AccountService {
     if (_accountService == null) {
         _accountService = new AccountService();
@@ -178,4 +202,4 @@ function globalData(): GlobalData {
     return _globalData;
 }
 
-export default { ballotsDb, electionsDb, electionRollDb, emailEventsDb, emailService, accountService, castVoteStore, globalData, eventQueue, database, blobService };
+export default { ballotsDb, electionsDb, electionRollDb, emailEventsDb, stripeCheckoutSessionsDb, emailService, accountService, castVoteStore, globalData, eventQueue, database, blobService, stripeService };
