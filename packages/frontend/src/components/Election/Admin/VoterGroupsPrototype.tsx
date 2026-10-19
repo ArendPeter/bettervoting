@@ -384,6 +384,9 @@ function VariantD({ s, actions }: { s: ProtoState; actions: ProtoActions }) {
     return <Box sx={{ mt: 1 }}>
         {/* fit-content + the alerts' width:0/minWidth:100% keeps long warnings from widening the section */}
         <Box sx={{ width: 'fit-content', maxWidth: '100%' }}>
+        <Typography variant='body2' color='text.secondary' sx={{ mb: 1 }}>
+            Check the boxes to choose which races each group can see.
+        </Typography>
         <Box sx={{ overflowX: 'auto' }}>
             <Table size='small' sx={{ '& td, & th': { px: 1 } }}>
                 <TableHead>
