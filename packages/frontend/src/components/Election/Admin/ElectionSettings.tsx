@@ -10,6 +10,7 @@ import useOptimisticToggle from "~/hooks/useOptimisticToggle";
 import { AdminPageNavigation } from '../Sidebar';
 import { useSetPublicResults } from '~/hooks/useAPI';
 import DialogTextField from '~/components/DialogTextField';
+import VoterGroupsPrototype from './VoterGroupsPrototype'; // PROTOTYPE
 
 type ElectionSwitchSettingProps = {
     settingKey: keyof IElectionSettings;
@@ -192,6 +193,7 @@ export default function ElectionSettings() {
                     </Box>
                 </FormGroup>
             </FormControl>
+            <VoterGroupsPrototype />
         </Grid>
 
 
