@@ -1,8 +1,9 @@
 // PROTOTYPE: throwaway. Never merge to main.
 // Question: how should configuring Voter Groups look and behave on the Settings page?
 // (on/off toggle, editing the group list, race-by-group grid)
-// Three variants of the Voter Groups section, switchable via `?variant=A|B|C`, mounted on the
-// existing /:id/admin/settings route. All state is in memory: nothing is saved to the election.
+// Variants of the Voter Groups section, switchable via `?variant=D|A|B|C`, mounted on the
+// existing /:id/admin/settings route. D is the merge of A's grid and C's "Edit groups" dialog,
+// with warnings styled like skipped ranks on ranked ballots. All state is in memory: nothing is saved to the election.
 //
 // Data rules from "Shape and enforcement of the election's voter group list" (#1702):
 //   race.precincts undefined = open to everyone, [] = open to no one (error), "" = the "No group" column.
@@ -15,11 +16,12 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import useElection from '~/components/ElectionContextProvider';
 import { useGetRolls } from '~/hooks/useAPI';
-import { SwitchSetting } from '~/components/util';
+import { SwitchSetting, useSubstitutedTranslation } from '~/components/util';
 import PrototypeSwitcher, { PrototypeVariant, usePrototypeVariant } from '~/components/PrototypeSwitcher';
 
 const NO_GROUP = '';
 const VARIANTS: PrototypeVariant[] = [
+    { key: 'D', name: 'Grid + Edit groups dialog' },
     { key: 'A', name: 'Inline grid' },
     { key: 'B', name: 'Group by group' },
     { key: 'C', name: 'Race by race + ballot preview' },
@@ -268,7 +270,6 @@ function VariantB({ s, actions }: { s: ProtoState; actions: ProtoActions }) {
 // ---------- Variant C: one row per race, groups as chips, plus distinct-ballot preview ----------
 
 function VariantC({ s, actions }: { s: ProtoState; actions: ProtoActions }) {
-    const { msg, clear, del } = useDeleteWithMessage(actions);
     const [editing, setEditing] = useState(false);
     const cols = allColumns(s);
 
@@ -331,20 +332,77 @@ function VariantC({ s, actions }: { s: ProtoState; actions: ProtoActions }) {
             </Box>
         </Stack>
 
-        <Dialog open={editing} onClose={() => setEditing(false)}>
-            <DialogTitle>Voter groups</DialogTitle>
-            <DialogContent>
-                <List dense>
-                    {s.groups.map(g => <Stack key={g} direction='row' sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                        <ListItemText primary={g} secondary={`${s.counts[g] ?? 0} voters`} />
-                        <IconButton aria-label={`Delete ${g}`} onClick={() => del(g)}><DeleteIcon /></IconButton>
-                    </Stack>)}
-                </List>
-                {msg && <Alert severity='warning' onClose={clear} sx={{ mb: 1 }}>{msg}</Alert>}
-                <GroupAdder actions={actions} />
-            </DialogContent>
-            <DialogActions><Button onClick={() => setEditing(false)}>Done</Button></DialogActions>
-        </Dialog>
+        <EditGroupsDialog open={editing} onClose={() => setEditing(false)} s={s} actions={actions} />
+    </Box>;
+}
+
+function EditGroupsDialog({ open, onClose, s, actions }: { open: boolean; onClose: () => void; s: ProtoState; actions: ProtoActions }) {
+    const { msg, clear, del } = useDeleteWithMessage(actions);
+    return <Dialog open={open} onClose={onClose}>
+        <DialogTitle>Voter groups</DialogTitle>
+        <DialogContent>
+            <List dense>
+                {s.groups.map(g => <Stack key={g} direction='row' sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                    <ListItemText primary={g} secondary={`${s.counts[g] ?? 0} voters`} />
+                    <IconButton aria-label={`Delete ${g}`} onClick={() => del(g)}><DeleteIcon /></IconButton>
+                </Stack>)}
+            </List>
+            {msg && <Alert severity='warning' onClose={clear} sx={{ mb: 1 }}>{msg}</Alert>}
+            <GroupAdder actions={actions} />
+        </DialogContent>
+        <DialogActions><Button onClick={onClose}>Done</Button></DialogActions>
+    </Dialog>;
+}
+
+// ---------- Variant D: A's grid + C's dialog, ballot-style warnings ----------
+
+function VariantD({ s, actions }: { s: ProtoState; actions: ProtoActions }) {
+    const [editing, setEditing] = useState(false);
+    const cols = allColumns(s);
+    const emptyCols = cols.filter(g => racesFor(s, g).length === 0);
+    const emptyRows = s.races.filter(r => r.precincts !== undefined && r.precincts.length === 0);
+    // Same yellow as skipped-rank columns on ranked ballots (GenericBallotGrid).
+    const warn = 'brand.warningColumn';
+    const warnings = [
+        ...emptyRows.map(r => `No voter group can see "${r.title}". Tick at least one group for this race.`),
+        ...emptyCols.map(g => `${label(g)} voters would see no races. Tick at least one race for this group.`),
+    ];
+    if (!s.enabled) return null;
+    return <Box sx={{ mt: 1 }}>
+        <Stack direction='row' sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography>{s.groups.length} groups: {s.groups.join(', ')}</Typography>
+            <Button size='small' onClick={() => setEditing(true)}>Edit groups</Button>
+        </Stack>
+        <Box sx={{ overflowX: 'auto', mt: 1 }}>
+            <Table size='small' sx={{ '& td, & th': { px: 1 } }}>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Race</TableCell>
+                        {cols.map(g => <TableCell key={g} align='center' sx={{ bgcolor: emptyCols.includes(g) ? warn : undefined }}>
+                            <Box sx={{ fontWeight: 600, fontStyle: g === NO_GROUP ? 'italic' : undefined }}>{label(g)}</Box>
+                            <Box sx={{ fontSize: 12, color: 'text.secondary' }}>{s.counts[g] ?? 0} voters</Box>
+                        </TableCell>)}
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {s.races.map(r => {
+                        const rowWarn = emptyRows.includes(r);
+                        return <TableRow key={r.race_id} sx={{ bgcolor: rowWarn ? warn : undefined }}
+                            aria-label={rowWarn ? `Warning: no group can see ${r.title}` : undefined}>
+                            <TableCell>{r.title}</TableCell>
+                            {cols.map(g => <TableCell key={g} align='center' sx={{ bgcolor: emptyCols.includes(g) ? warn : undefined }}>
+                                <Checkbox checked={sees(r, g)} onChange={e => actions.setCell(r.race_id, g, e.target.checked)}
+                                    slotProps={{ input: { 'aria-label': `${r.title} / ${label(g)}` } }} />
+                            </TableCell>)}
+                        </TableRow>;
+                    })}
+                </TableBody>
+            </Table>
+        </Box>
+        {warnings.map((m, i) => <Alert key={i} severity='warning' sx={{ mt: 1, padding: '.2cm' }}>
+            <Typography>{m}</Typography>
+        </Alert>)}
+        <EditGroupsDialog open={editing} onClose={() => setEditing(false)} s={s} actions={actions} />
     </Box>;
 }
 
@@ -354,13 +412,16 @@ export default function VoterGroupsPrototype() {
     const [s, actions] = useProtoState();
     const variant = usePrototypeVariant(VARIANTS);
     const { election } = useElection();
+    const { t } = useSubstitutedTranslation(election.settings.term_type);
+    const isD = variant.key === 'D';
     return <Box sx={{ mt: 3, p: 2, border: '2px dashed', borderColor: 'warning.main', borderRadius: 1 }}>
         <Typography variant='caption' color='warning.main'>PROTOTYPE {variant.key}: {variant.name} (changes are not saved)</Typography>
-        <Typography variant='h6'>Voter Groups</Typography>
-        <SwitchSetting label='Show different races to different groups of voters' toggled={s.enabled} onToggle={actions.setEnabled} />
+        {!isD && <Typography variant='h6'>Voter Groups</Typography>}
+        <SwitchSetting label={isD ? t('election_settings.voter_groups') : 'Show different races to different groups of voters'} toggled={s.enabled} onToggle={actions.setEnabled} />
         {election.state !== 'draft' && s.enabled &&
             <Alert severity='info' sx={{ mt: 1 }}>Races are locked once the election leaves draft (prototype keeps them editable).</Alert>}
-        {!s.enabled && <Typography variant='body2' color='text.secondary'>Off: every voter sees every race. Your groups and race choices are kept if you turn this back on.</Typography>}
+        {!s.enabled && !isD && <Typography variant='body2' color='text.secondary'>Off: every voter sees every race. Your groups and race choices are kept if you turn this back on.</Typography>}
+        {isD && <VariantD s={s} actions={actions} />}
         {variant.key === 'A' && <VariantA s={s} actions={actions} />}
         {variant.key === 'B' && <VariantB s={s} actions={actions} />}
         {variant.key === 'C' && <VariantC s={s} actions={actions} />}

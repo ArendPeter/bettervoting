@@ -765,8 +765,8 @@ tips:
     learn_link: https://docs.bettervoting.com/help/preliminary_results.html
 
   voter_groups:
-    title: Enable Voter Groups
-    description: Allow different voter groups access to different races within a larger election (ex. districts within jurisdiction).
+    title: Set Voter Groups
+    description: Split your voters into groups (for example, wards or departments) and choose which races each group sees. Each voter only sees the races open to their group.
 
   email_list:
     title: $t(wizard.email_list_title)
@@ -1200,7 +1200,7 @@ election_settings:
 
   public_results: Make Results Public !tip(public_results)
 
-  voter_groups: Enable Voter Groups !tip(voter_groups)
+  voter_groups: Set Voter Groups !tip(voter_groups)
 
   custom_email_invite: Customize Emails To Voters !tip(custom_email_invite)
 
