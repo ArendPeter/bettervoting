@@ -11,9 +11,10 @@ import { useEffect, useMemo, useState } from 'react';
 import {
     Alert, Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton,
     List, ListItemButton, ListItemText, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField,
-    Tooltip, Typography, Autocomplete,
+    Tooltip, Typography, Autocomplete, FormHelperText,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import useElection from '~/components/ElectionContextProvider';
 import { useGetRolls } from '~/hooks/useAPI';
 import { SwitchSetting, useSubstitutedTranslation } from '~/components/util';
@@ -86,7 +87,12 @@ function useProtoState(): [ProtoState, ProtoActions] {
             const name = raw.trim();
             if (!name) return 'Group names can\'t be empty';
             if (s.groups.some(g => g.toLowerCase() === name.toLowerCase())) return `"${name}" is already a group`;
-            update(s => ({ ...s, groups: [...s.groups, name] }));
+            // A new group starts ticked for every race; races open to everyone already include it.
+            update(s => ({
+                ...s,
+                groups: [...s.groups, name],
+                races: s.races.map(r => r.precincts ? { ...r, precincts: [...r.precincts, name] } : r),
+            }));
             return null;
         },
         deleteGroup: g => {
@@ -337,17 +343,24 @@ function VariantC({ s, actions }: { s: ProtoState; actions: ProtoActions }) {
 }
 
 function EditGroupsDialog({ open, onClose, s, actions }: { open: boolean; onClose: () => void; s: ProtoState; actions: ProtoActions }) {
-    const { msg, clear, del } = useDeleteWithMessage(actions);
     return <Dialog open={open} onClose={onClose}>
         <DialogTitle>Voter groups</DialogTitle>
         <DialogContent>
             <List dense>
-                {s.groups.map(g => <Stack key={g} direction='row' sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                    <ListItemText primary={g} secondary={`${s.counts[g] ?? 0} voters`} />
-                    <IconButton aria-label={`Delete ${g}`} onClick={() => del(g)}><DeleteIcon /></IconButton>
-                </Stack>)}
+                {s.groups.map(g => {
+                    const inUse = (s.counts[g] ?? 0) > 0;
+                    return <Box key={g}>
+                        <Stack direction='row' sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                            <ListItemText primary={g} secondary={`${s.counts[g] ?? 0} voters`} />
+                            <IconButton aria-label={`Delete ${g}`} disabled={inUse} onClick={() => actions.deleteGroup(g)}><DeleteIcon /></IconButton>
+                        </Stack>
+                        {/* Same treatment as SwitchSetting's disabledMessage on the Settings page */}
+                        {inUse && <FormHelperText sx={{ mt: 0, mb: 1, fontStyle: 'italic', textAlign: 'right' }}>
+                            Can&apos;t delete a group that has voters
+                        </FormHelperText>}
+                    </Box>;
+                })}
             </List>
-            {msg && <Alert severity='warning' onClose={clear} sx={{ mb: 1 }}>{msg}</Alert>}
             <GroupAdder actions={actions} />
         </DialogContent>
         <DialogActions><Button onClick={onClose}>Done</Button></DialogActions>
@@ -369,15 +382,17 @@ function VariantD({ s, actions }: { s: ProtoState; actions: ProtoActions }) {
     ];
     if (!s.enabled) return null;
     return <Box sx={{ mt: 1 }}>
-        <Stack direction='row' sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Typography>{s.groups.length} groups: {s.groups.join(', ')}</Typography>
-            <Button size='small' onClick={() => setEditing(true)}>Edit groups</Button>
-        </Stack>
-        <Box sx={{ overflowX: 'auto', mt: 1 }}>
+        {/* fit-content + the alerts' width:0/minWidth:100% keeps long warnings from widening the section */}
+        <Box sx={{ width: 'fit-content', maxWidth: '100%' }}>
+        <Box sx={{ overflowX: 'auto' }}>
             <Table size='small' sx={{ '& td, & th': { px: 1 } }}>
                 <TableHead>
                     <TableRow>
-                        <TableCell>Race</TableCell>
+                        <TableCell sx={{ verticalAlign: 'bottom' }}>
+                            <Button size='small' variant='outlined' startIcon={<EditIcon />} onClick={() => setEditing(true)}>
+                                {s.groups.length ? 'Edit groups' : 'Add groups'}
+                            </Button>
+                        </TableCell>
                         {cols.map(g => <TableCell key={g} align='center' sx={{ bgcolor: emptyCols.includes(g) ? warn : undefined }}>
                             <Box sx={{ fontWeight: 600, fontStyle: g === NO_GROUP ? 'italic' : undefined }}>{label(g)}</Box>
                             <Box sx={{ fontSize: 12, color: 'text.secondary' }}>{s.counts[g] ?? 0} voters</Box>
@@ -399,9 +414,10 @@ function VariantD({ s, actions }: { s: ProtoState; actions: ProtoActions }) {
                 </TableBody>
             </Table>
         </Box>
-        {warnings.map((m, i) => <Alert key={i} severity='warning' sx={{ mt: 1, padding: '.2cm' }}>
+        {warnings.map((m, i) => <Alert key={i} severity='warning' sx={{ mt: 1, padding: '.2cm', width: 0, minWidth: '100%', boxSizing: 'border-box' }}>
             <Typography>{m}</Typography>
         </Alert>)}
+        </Box>
         <EditGroupsDialog open={editing} onClose={() => setEditing(false)} s={s} actions={actions} />
     </Box>;
 }
